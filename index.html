@@ -159,6 +159,15 @@
   .form small { font-weight: 600; }
   .form input[type=range] { width: 100%; accent-color: var(--star-dark); height: 32px; }
   .hist { font-size: 15px; }
+  .streak { margin-top: 8px; font-weight: 800; font-size: 16px; color: #e5532d; }
+  .streak small { color: var(--muted); font-weight: 700; }
+  .emo-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .emo-tools input { width: 150px !important; padding: 8px 10px !important; font-size: 20px !important; }
+  .emojis.rm button { position: relative; background: #ffe1e1; }
+  .emojis.rm button::after { content: "✕"; position: absolute; top: -4px; right: -4px; width: 18px; height: 18px; border-radius: 50%; background: var(--danger); color: #fff; font-size: 11px; display: grid; place-items: center; }
+  .rule { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 700; color: var(--ink); }
+  .rule input { width: 70px !important; padding: 8px !important; text-align: center; }
+  #recSheet .panel { max-width: 480px; }
   .topbtn[hidden] { display: none; }
   .setup { background: rgba(255,255,255,.55); border-radius: 18px; padding: 12px 14px; margin-bottom: 14px; }
   .setup summary { cursor: pointer; line-height: 1.4; }
@@ -225,6 +234,7 @@
       <div class="count" id="count">0</div>
       <div class="sub" id="goal"></div>
       <div class="bar"><i id="bar" style="width:0"></i></div>
+      <div class="streak" id="streak" hidden></div>
     </div>
     <div class="today">Hôm nay<b id="today">0</b></div>
   </section>
@@ -267,6 +277,15 @@
     <button data-tab="hist">Lịch sử</button>
   </div>
   <div id="pbody"></div>
+</div></div>
+
+<!-- Mã khôi phục (dùng khi quên mã PIN) -->
+<div class="sheet" id="recSheet"><div class="panel gate">
+  <div class="ph"><h3>🗝️ Mã khôi phục</h3></div>
+  <p class="note">Dùng khi bố mẹ quên mã PIN. Hãy <b>chụp màn hình</b> hoặc ghi vào điện thoại của bố mẹ, <b>đừng để bé thấy</b>.</p>
+  <div class="q" id="recCode" style="letter-spacing:4px"></div>
+  <p class="note" id="recNote"></p>
+  <button class="bigbtn" id="recOk" style="margin:8px auto 0">Bố mẹ đã lưu lại</button>
 </div></div>
 
 <div class="cheer" id="cheer">
@@ -363,9 +382,15 @@ function tra_(o) {
   const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const stars = n => '⭐'.repeat(Math.min(n, 5)) + (n > 5 ? ` ×${n}` : '');
 
-  const KID_EMOJI = ['🐻', '🐰', '🐱', '🐶', '🦁', '🐼', '🐸', '🦄', '🐯', '🐵', '🐥', '🦊'];
-  const TASK_EMOJI = ['🪥', '🍚', '🧸', '👕', '🧼', '😴', '📚', '🧹', '🚽', '🥛', '🥦', '🛁', '🎒', '🙏', '🖍️', '🎹', '⚽', '🌱', '🍽️', '👟', '💧', '🤝', '🧩', '🐟'];
-  const REWARD_EMOJI = ['📺', '🍦', '🎡', '🧸', '🍭', '🎈', '🚗', '📖', '🍕', '🏊', '🎮', '🛝', '🍰', '🎁'];
+  // Biểu tượng mặc định; bố mẹ thêm/bớt được (lưu ở shared.emoji, đồng bộ giữa các máy)
+  const EMOJI = {
+    kid: ['🐻', '🐰', '🐱', '🐶', '🦁', '🐼', '🐸', '🦄', '🐯', '🐵', '🐥', '🦊', '🐨', '🐷', '🐧', '🦖'],
+    task: ['🪥', '🍚', '🧸', '👕', '🧼', '😴', '📚', '🧹', '🚽', '🥛', '🥦', '🛁', '🎒', '🙏', '🖍️', '🎹', '⚽', '🌱', '🍽️', '👟', '💧', '🤝', '🧩', '🐟', '📝', '🧺', '🚲', '🏃', '🎨', '🧽'],
+    reward: ['📺', '🍦', '🎡', '🧸', '🍭', '🎈', '🚗', '📖', '🍕', '🏊', '🎮', '🛝', '🍰', '🎁', '🎬', '🍫', '🧃', '🪁', '🛍️', '⛺'],
+  };
+  const emojiList = kind => (S.shared.emoji && S.shared.emoji[kind]) || EMOJI[kind];
+  // Thưởng chuỗi ngày: mặc định làm hết việc 3 ngày liên tiếp +2 sao, 7 ngày +5 sao
+  const streakCfg = () => Object.assign({ on: true, mode: 'all', min: 3, rules: [{ days: 3, stars: 2 }, { days: 7, stars: 5 }] }, S.shared.streak);
 
   // Bộ gợi ý theo độ tuổi: 'nho' = 3–6 tuổi, 'lon' = 7 tuổi trở lên
   const SUGGEST = {
@@ -421,8 +446,8 @@ function tra_(o) {
   function duplicates() {
     const u = undone(), seen = new Set(), dup = new Set();
     for (const e of S.events.slice().sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1))) {
-      if (e.type !== 'task' || u.has(e.id)) continue;
-      const key = `${e.kid}|${e.day}|${e.task}`;
+      if ((e.type !== 'task' && e.type !== 'streak') || u.has(e.id)) continue;
+      const key = e.type === 'task' ? `${e.kid}|${e.day}|${e.task}` : `${e.kid}|${e.day}|streak${e.days}`;
       if (seen.has(key)) dup.add(e.id); else seen.add(key);
     }
     return dup;
@@ -435,6 +460,51 @@ function tra_(o) {
   };
   const doneToday = kidId => todayDone(kidId).map(e => e.task);
 
+  /* ---------- Chuỗi ngày liên tiếp ----------
+     Một ngày "đủ việc" khi bé làm hết số việc của mình hôm đó (mỗi lần bấm việc ghi kèm tổng số việc `of`,
+     nên sau này bố mẹ thêm/bớt việc cũng không làm sai các ngày cũ), hoặc ít nhất N việc tuỳ bố mẹ chọn. */
+  function fullDays(kidId) {
+    const cfg = streakCfg(), u = undone(), dup = duplicates(), byDay = {};
+    for (const e of S.events) {
+      if (e.type !== 'task' || e.kid !== kidId || u.has(e.id) || dup.has(e.id)) continue;
+      const d = byDay[e.day] = byDay[e.day] || { tasks: new Set(), of: 0 };
+      d.tasks.add(e.task); d.of = Math.max(d.of, e.of || 0);
+    }
+    const full = new Set();
+    for (const [day, d] of Object.entries(byDay)) {
+      const need = cfg.mode === 'min' ? cfg.min : (d.of || myTasks(kidId).length);
+      if (need > 0 && d.tasks.size >= need) full.add(day);
+    }
+    return full;
+  }
+  // Số ngày liên tiếp: tính cả hôm nay nếu đã đủ việc, chưa đủ thì chuỗi vẫn giữ từ hôm qua
+  function streakOf(kidId) {
+    const full = fullDays(kidId), d = new Date();
+    if (!full.has(dayKey(d))) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (full.has(dayKey(d)) && n < 1000) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  const todayFull = kidId => fullDays(kidId).has(dayKey());
+  // Gọi khi bé vừa làm đủ việc hôm nay: thưởng các mốc chuỗi (3, 6, 9… ngày với mốc 3 ngày)
+  function awardStreak(k) {
+    const cfg = streakCfg(); if (!cfg.on) return 0;
+    const n = streakOf(k.id), day = dayKey(), u = undone();
+    let bonus = 0;
+    for (const r of cfg.rules) {
+      if (!(r.days > 0 && r.stars > 0 && n % r.days === 0)) continue;
+      if (S.events.some(e => e.type === 'streak' && e.kid === k.id && e.day === day && e.days === r.days && !u.has(e.id))) continue;
+      addEvent(k.id, r.stars, `🔥 Thưởng ${r.days} ngày liên tiếp làm đủ việc`, { type: 'streak', day, days: r.days });
+      bonus += r.stars;
+    }
+    return bonus;
+  }
+
+  // Mã PIN và mã khôi phục hiện ở cột "Tên" trong Google Trang tính để bố mẹ tra khi quên
+  function touchShared() {
+    S.shared.name = `🔑 Mã PIN bố mẹ: ${S.shared.pin || '(chưa đặt)'} · Mã khôi phục: ${S.shared.rec || '(chưa có)'}`;
+    touch(S.shared);
+  }
   // Đánh dấu một mục vừa sửa để gửi lên dữ liệu chung
   function touch(it) { it.u = Date.now(); if (!S.out.it.includes(it.id)) S.out.it.push(it.id); }
   function addEvent(kidId, d, text, extra) {
@@ -688,6 +758,15 @@ function tra_(o) {
       <button class="task ${done.includes(t.id) ? 'done' : ''}" data-task="${t.id}">
         <span class="ic">${t.icon}</span><span class="tn">${esc(t.name)}</span><span class="ts">${stars(t.value)}</span>
       </button>`).join('') : '<div class="empty">Chưa có việc nào. Bố mẹ vào "Bố mẹ" để thêm nhé.</div>';
+    const cfg = streakCfg(), n = streakOf(k.id);
+    $('streak').hidden = !cfg.on || !cfg.rules.length;
+    if (!$('streak').hidden) {
+      // Mốc thưởng kế tiếp: ngày đủ việc tiếp theo là ngày thứ n + 1 của chuỗi
+      const r = cfg.rules.filter(r => r.days > 0).map(r => ({ ...r, at: Math.ceil((n + 1) / r.days) * r.days })).sort((a, b) => a.at - b.at)[0];
+      const left = r ? r.at - n : 0;
+      $('streak').innerHTML = (n ? `🔥 ${n} ngày liên tiếp` : '🔥 Làm đủ việc mỗi ngày để có chuỗi') +
+        (r ? ` <small>· thêm ${left} ngày nữa được +${r.stars} ⭐</small>` : '');
+    }
     $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
     syncBadge();
   }
@@ -708,8 +787,9 @@ function tra_(o) {
       say(`${t.name}, con làm xong rồi mà.`);
       return;
     }
-    const before = starsOf(k.id);
-    addEvent(k.id, t.value, `${t.icon} ${t.name}`, { type: 'task', task: t.id, day: dayKey() });
+    const before = starsOf(k.id), wasFull = todayFull(k.id);
+    addEvent(k.id, t.value, `${t.icon} ${t.name}`, { type: 'task', task: t.id, day: dayKey(), of: myTasks().length });
+    const bonus = !wasFull && todayFull(k.id) ? awardStreak(k) : 0;
     save();
     const now = starsOf(k.id);
     flyStar(b, Math.min(t.value, 5));
@@ -723,7 +803,8 @@ function tra_(o) {
     const allDone = myTasks().every(x => done.includes(x.id));
     const milestone = Math.floor(now / 10) > Math.floor(before / 10);
     const newReward = myRewards().find(r => before < r.cost && now >= r.cost);
-    if (allDone) setTimeout(() => cheer('🏆', `${k.name} làm hết việc hôm nay!`, `Được ${now} ngôi sao rồi`), 1100);
+    if (bonus) setTimeout(() => cheer('🔥', `${streakOf(k.id)} ngày liên tiếp!`, `${k.name} được thưởng thêm ${bonus} ngôi sao`), 1100);
+    else if (allDone) setTimeout(() => cheer('🏆', `${k.name} làm hết việc hôm nay!`, `Được ${now} ngôi sao rồi`), 1100);
     else if (newReward) setTimeout(() => cheer(newReward.icon, 'Đủ sao đổi quà rồi!', `${newReward.name}`), 1100);
     else if (milestone) setTimeout(() => cheer('🌟', `${Math.floor(now / 10) * 10} ngôi sao!`, `${k.name} giỏi quá`), 1100);
     else { party(18); say(`${praise} ${t.name}, con được thêm ${t.value} ngôi sao nhé.`); }
@@ -738,17 +819,17 @@ function tra_(o) {
   document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s) s.classList.remove('open'); }));
 
   /* ---------- Cổng phụ huynh: mã PIN 4 số (bé lớn cũng không tự vào được) ---------- */
-  // mode: 'pin' nhập mã · 'new1'/'new2' tạo mã mới · 'forgot' giải phép nhân khó để đặt lại mã
+  // mode: 'pin' nhập mã · 'new1'/'new2' tạo mã mới · 'forgot' nhập mã khôi phục 8 số để đặt lại mã
   const G = { mode: 'pin', input: '', then: null, ans: 0, first: '' };
   function gateShow(q) {
     $('gateQ').textContent = q;
-    $('gateA').textContent = G.mode === 'forgot' ? G.input : '●'.repeat(G.input.length) + '○'.repeat(4 - G.input.length);
+    $('gateA').textContent = G.mode === 'forgot' ? (G.input + '_'.repeat(8 - G.input.length)).replace(/(.{4})/, '$1 ') : '●'.repeat(G.input.length) + '○'.repeat(4 - G.input.length);
     $('forgot').style.display = G.mode === 'pin' ? '' : 'none';
   }
   const GATE_Q = { pin: 'Nhập mã PIN', new1: 'Tạo mã PIN 4 số', new2: 'Nhập lại mã PIN' };
   function gate(why, then, mode) {
     G.mode = mode || (S.shared.pin ? 'pin' : 'new1'); G.input = ''; G.then = then;
-    $('gateWhy').textContent = G.mode === 'new1' && !S.shared.pin ? 'Lần đầu: bố mẹ tạo mã PIN riêng, đừng cho bé biết nhé' : why;
+    $('gateWhy').innerHTML = G.mode === 'new1' && !S.shared.pin ? 'Lần đầu: bố mẹ tạo mã PIN riêng, đừng cho bé biết nhé' : esc(why);
     gateShow(GATE_Q[G.mode]);
     open('gateSheet');
   }
@@ -756,33 +837,55 @@ function tra_(o) {
     G.input = ''; const p = $('gateA'); p.textContent = '✗';
     p.style.animation = 'wiggle .4s'; setTimeout(() => { p.style.animation = ''; gateShow($('gateQ').textContent); }, 500);
   }
-  function gatePass() { close('gateSheet'); const f = G.then; G.then = null; f && f(); }
+  // Mã khôi phục: 8 số ngẫu nhiên tạo khi đặt mã PIN, bố mẹ lưu riêng; cũng hiện trong Google Trang tính nếu có đồng bộ
+  function newRecovery() {
+    const a = new Uint32Array(2); crypto.getRandomValues(a);
+    return String(a[0] % 1e4).padStart(4, '0') + String(a[1] % 1e4).padStart(4, '0');
+  }
+  function showRec(then) {
+    $('recCode').textContent = S.shared.rec.replace(/(\d{4})(\d{4})/, '$1 $2');
+    $('recNote').innerHTML = S.sync.url ? 'Mã PIN và mã khôi phục cũng được ghi trong Google Trang tính "Sao Cho Bé" (trang "Bé, việc, quà", dòng 🔑) — chỉ tài khoản Google của bố mẹ xem được.' : '';
+    $('recOk').onclick = () => { close('recSheet'); then && then(); };
+    open('recSheet');
+  }
+  function gatePass() {
+    close('gateSheet'); const f = G.then; G.then = null;
+    // Máy cài từ bản cũ chưa có mã khôi phục: tạo và cho bố mẹ lưu lại ngay
+    if (!S.shared.rec) { S.shared.rec = newRecovery(); touchShared(); save(); showRec(f); return; }
+    f && f();
+  }
   function gateSubmit() {
     if (G.mode === 'pin') { if (G.input === S.shared.pin) gatePass(); else gateFail(); }
     else if (G.mode === 'new1') { G.first = G.input; G.mode = 'new2'; G.input = ''; gateShow(GATE_Q.new2); }
     else if (G.mode === 'new2') {
-      if (G.input === G.first) { S.shared.pin = G.input; touch(S.shared); save(); gatePass(); }
+      if (G.input === G.first) {
+        const first = !S.shared.rec;
+        S.shared.pin = G.input; if (first) S.shared.rec = newRecovery(); touchShared(); save();
+        if (first) { close('gateSheet'); const f = G.then; G.then = null; showRec(f); } else gatePass();
+      }
       else { G.mode = 'new1'; $('gateWhy').textContent = 'Hai lần nhập không khớp, nhập lại nhé'; G.input = ''; gateShow(GATE_Q.new1); }
     } else if (G.mode === 'forgot') {
-      if (+G.input === G.ans) { G.mode = 'new1'; G.input = ''; $('gateWhy').textContent = 'Đúng rồi! Tạo mã PIN mới'; gateShow(GATE_Q.new1); }
+      if (S.shared.rec && G.input === S.shared.rec) { G.mode = 'new1'; G.input = ''; $('gateWhy').textContent = 'Đúng rồi! Tạo mã PIN mới'; gateShow(GATE_Q.new1); }
       else gateFail();
     }
   }
   $('pad').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, '⌫', 0, '✓'].map(n => `<button data-n="${n}">${n}</button>`).join('');
   $('pad').onclick = e => {
     const b = e.target.closest('[data-n]'); if (!b) return;
-    const n = b.dataset.n, isPin = G.mode !== 'forgot';
+    const n = b.dataset.n, len = G.mode === 'forgot' ? 8 : 4;
     if (n === '⌫') G.input = G.input.slice(0, -1);
     else if (n === '✓') { if (G.input) gateSubmit(); return; }
-    else if (G.input.length < (isPin ? 4 : 5)) G.input += n;
+    else if (G.input.length < len) G.input += n;
     gateShow($('gateQ').textContent);
-    if (isPin && G.input.length === 4) setTimeout(gateSubmit, 150);
+    if (G.input.length === len) setTimeout(gateSubmit, 150);
   };
   $('forgot').onclick = () => {
-    const a = 23 + Math.floor(Math.random() * 70), b = 13 + Math.floor(Math.random() * 80);
-    G.mode = 'forgot'; G.ans = a * b; G.input = '';
-    $('gateWhy').textContent = 'Quên mã? Giải phép nhân này để đặt mã mới';
-    gateShow(`${a} × ${b} = ?`);
+    G.mode = 'forgot'; G.input = '';
+    $('gateWhy').innerHTML = S.shared.rec
+      ? 'Nhập <b>mã khôi phục 8 số</b> bố mẹ đã lưu khi tạo mã PIN.' + (S.sync.url ? '<br>Hoặc mở Google Trang tính "Sao Cho Bé" → trang "Bé, việc, quà" → dòng 🔑 để xem mã PIN.' : '')
+      : S.sync.url ? 'Mở Google Trang tính "Sao Cho Bé" → trang "Bé, việc, quà" → dòng 🔑 để xem mã PIN.'
+      : 'Máy này chưa có mã khôi phục. Cách duy nhất: xoá dữ liệu app (Cài đặt → Safari → Nâng cao → Dữ liệu trang web → xoá github.io) rồi mở lại — sao của các bé sẽ mất nếu chưa đồng bộ.';
+    gateShow('Nhập mã khôi phục');
   };
 
   /* ---------- Đổi quà ---------- */
@@ -821,13 +924,19 @@ function tra_(o) {
 
   function formHTML(kind, item) {
     const isKid = kind === 'kids', isTask = kind === 'tasks';
-    const list = isKid ? KID_EMOJI : isTask ? TASK_EMOJI : REWARD_EMOJI;
+    const list = emojiList(isKid ? 'kid' : isTask ? 'task' : 'reward');
     pick = item ? (item.avatar || item.icon) : isKid ? (list.find(e => !kids().some(k => k.avatar === e)) || list[0]) : list[0];
     const numLabel = isKid ? null : isTask ? 'Số sao được thưởng' : 'Số sao cần để đổi';
     const num = item ? (isTask ? item.value : item.cost) : (isTask ? 1 : 10);
     return `<form class="form" id="pform">
       <label>${isKid ? 'Tên bé' : isTask ? 'Tên việc' : 'Tên phần quà'}<input type="text" id="fname" maxlength="40" required value="${item ? esc(item.name) : ''}"></label>
-      <div class="fl">${isKid ? 'Hình đại diện' : 'Biểu tượng'}${emojiPicker(list, pick)}</div>
+      <div class="fl">${isKid ? 'Hình đại diện' : 'Biểu tượng'}${emojiPicker(list.includes(pick) ? list : [pick, ...list], pick)}
+        <div class="emo-tools">
+          <input type="text" id="emoNew" placeholder="Gõ/dán emoji" autocomplete="off">
+          <button type="button" class="sbtn" data-emo-act="add">＋ Thêm</button>
+          <button type="button" class="sbtn" data-emo-act="rm">➖ Bớt</button>
+        </div>
+        <small id="emoHint">Thêm: bấm vào ô, chuyển bàn phím sang emoji 😀 rồi chọn. Bớt: bấm "Bớt" rồi chạm vào biểu tượng muốn bỏ.</small></div>
       ${numLabel ? `<label>${numLabel}<input type="number" id="fnum" min="1" max="${isTask ? 10 : 999}" value="${num}" required></label>` : ''}
       ${isKid ? `<div class="fl">Độ tuổi<span class="chips">${[['nho', '🧒 Bé nhỏ (3–6 tuổi)'], ['lon', '🧑 Bé lớn (7 tuổi trở lên)']].map(([v, t]) =>
         `<label class="chip"><input type="radio" name="fage" value="${v}" ${(item ? item.age : 'nho') === v ? 'checked' : ''}>${t}</label>`).join('')}</span>
@@ -855,7 +964,7 @@ function tra_(o) {
           <button class="sbtn" data-act="edit" data-id="${k.id}">✏️</button>
           ${kids().length > 1 ? `<button class="sbtn red" data-act="del" data-id="${k.id}">🗑</button>` : ''}
         </div>`)).join('') + `<p class="note">Dùng +1/−1 để thưởng thêm hoặc sửa khi bấm nhầm. Muốn bỏ đánh dấu một việc hôm nay, vào tab "Việc làm".</p>
-        <button class="sbtn" data-act="pin">🔑 Đổi mã PIN bố mẹ</button>`;
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="sbtn" data-act="pin">🔑 Đổi mã PIN bố mẹ</button><button class="sbtn" data-act="rec">🗝️ Xem mã khôi phục</button></div>`;
     } else if (tab === 'tasks') {
       const done = doneToday();
       body.innerHTML = `<p class="note">Việc được đánh dấu lại từ đầu mỗi ngày. Xem việc đã xong hôm nay của:</p>
@@ -869,12 +978,35 @@ function tra_(o) {
           <button class="sbtn red" data-act="del" data-id="${t.id}">🗑</button>
         </div>`)).join('');
     } else if (tab === 'rewards') {
-      body.innerHTML = addBtn('Thêm phần quà') + rewards().map(r => formFor(r, `
+      const cfg = streakCfg();
+      body.innerHTML = `<div class="form" id="streakForm">
+          <label class="chip" style="justify-content:flex-start"><input type="checkbox" id="stOn" ${cfg.on ? 'checked' : ''}> 🔥 <b>Thưởng chuỗi ngày liên tiếp</b></label>
+          <div class="fl">Một ngày được tính khi bé
+            <select id="stMode" style="padding:10px;border-radius:12px;border:2px solid var(--line);font-size:16px;background:#fffdf6;color:var(--ink)">
+              <option value="all" ${cfg.mode === 'all' ? 'selected' : ''}>làm hết việc của mình</option>
+              <option value="min" ${cfg.mode === 'min' ? 'selected' : ''}>làm ít nhất … việc</option>
+            </select>
+            <span class="rule" id="stMinRow" ${cfg.mode === 'min' ? '' : 'hidden'}>Ít nhất <input type="number" id="stMin" min="1" max="30" value="${cfg.min}"> việc mỗi ngày</span>
+          </div>
+          <div class="fl">Mốc thưởng (lặp lại: mốc 3 ngày thì ngày 3, 6, 9… đều được thưởng)
+            ${cfg.rules.map((r, i) => `<span class="rule">Mỗi <input type="number" min="1" max="365" data-rule="${i}" data-f="days" value="${r.days}"> ngày liên tiếp → +<input type="number" min="1" max="100" data-rule="${i}" data-f="stars" value="${r.stars}"> ⭐ <button type="button" class="sbtn red" data-act="rmrule" data-id="${i}">🗑</button></span>`).join('')}
+            <button type="button" class="sbtn" data-act="addrule" style="justify-self:start">＋ Thêm mốc</button>
+          </div>
+        </div>` + addBtn('Thêm phần quà') + rewards().map(r => formFor(r, `
         <div class="row"><span class="e">${r.icon}</span>
           <span class="t">${esc(r.name)}<small>⭐ ${r.cost} sao · ${forWho(r)}</small></span>
           <button class="sbtn" data-act="edit" data-id="${r.id}">✏️</button>
           <button class="sbtn red" data-act="del" data-id="${r.id}">🗑</button>
         </div>`)).join('');
+      const sf = $('streakForm');
+      if (sf) sf.onchange = e => {
+        const c = streakCfg(), el = e.target;
+        if (el.id === 'stOn') c.on = el.checked;
+        else if (el.id === 'stMode') { c.mode = el.value; $('stMinRow').hidden = el.value !== 'min'; }
+        else if (el.id === 'stMin') c.min = Math.max(1, parseInt(el.value, 10) || 1);
+        else if (el.dataset.rule) c.rules = c.rules.map((r, i) => i === +el.dataset.rule ? { ...r, [el.dataset.f]: Math.max(1, parseInt(el.value, 10) || 1) } : r);
+        S.shared.streak = c; touchShared(); save(); render();
+      };
     } else if (tab === 'voice') {
       const list = viVoices(), cur = bestVoice();
       body.innerHTML = `<div class="form">
@@ -962,9 +1094,33 @@ function tra_(o) {
     const f = $('pform');
     if (f) {
       $('fname').focus();
-      f.querySelector('.emojis').onclick = e => {
+      const kind = tab === 'kids' ? 'kid' : tab === 'tasks' ? 'task' : 'reward', box = f.querySelector('.emojis');
+      const saveList = list => { S.shared.emoji = Object.assign({}, S.shared.emoji, { [kind]: list }); touchShared(); save(); };
+      const redraw = () => { const l = emojiList(kind); box.innerHTML = (l.includes(pick) ? l : [pick, ...l]).map(x => `<button type="button" data-emo="${x}" class="${x === pick ? 'on' : ''}">${x}</button>`).join(''); };
+      box.onclick = e => {
         const b = e.target.closest('[data-emo]'); if (!b) return;
+        if (box.classList.contains('rm')) {
+          const l = emojiList(kind).filter(x => x !== b.dataset.emo);
+          if (!l.length) { alert('Phải giữ lại ít nhất một biểu tượng'); return; }
+          saveList(l); redraw(); return;
+        }
         pick = b.dataset.emo; f.querySelectorAll('[data-emo]').forEach(x => x.classList.toggle('on', x === b));
+      };
+      f.querySelector('.emo-tools').onclick = e => {
+        const b = e.target.closest('[data-emo-act]'); if (!b) return;
+        if (b.dataset.emoAct === 'rm') {
+          const on = box.classList.toggle('rm');
+          b.textContent = on ? '✓ Xong' : '➖ Bớt'; return;
+        }
+        // Lấy đúng một emoji (kể cả emoji ghép nhiều ký tự như 👨‍👩‍👧)
+        const raw = $('emoNew').value.trim();
+        const seg = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter().segment(raw)].map(x => x.segment) : [...raw];
+        const emo = seg.find(x => /\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(x));
+        if (!emo) { alert('Hãy gõ hoặc dán một emoji (chuyển bàn phím sang biểu tượng 😀).'); return; }
+        const l = emojiList(kind);
+        if (!l.includes(emo)) saveList([emo, ...l]);
+        pick = emo; $('emoNew').value = ''; box.classList.remove('rm'); redraw();
+        f.querySelector('[data-emo-act="rm"]').textContent = '➖ Bớt';
       };
       $('fcancel').onclick = () => { editing = null; renderParent(); };
       f.onsubmit = e => {
@@ -1003,6 +1159,12 @@ function tra_(o) {
     else if (act === 'voice') { S.voice.name = id; say(`Chào ${kid().name}, con làm tốt lắm.`, true); }
     else if (act === 'vtest') { say(`Giỏi quá con ơi! ${kid().name} được thêm một ngôi sao nhé.`, true); return; }
     else if (act === 'vreset') { S.voice = { name: '', rate: .85, pitch: 1.05 }; say('Giỏi quá con ơi!', true); }
+    else if (act === 'addrule' || act === 'rmrule') {
+      const c = streakCfg();
+      c.rules = act === 'addrule' ? [...c.rules, { days: 14, stars: 10 }] : c.rules.filter((_, i) => i !== +id);
+      S.shared.streak = c; touchShared();
+    }
+    else if (act === 'rec') { if (!S.shared.rec) { S.shared.rec = newRecovery(); touchShared(); save(); } showRec(); return; }
     else if (act === 'pin') {
       close('parentSheet');
       gate('', () => { renderParent(); open('parentSheet'); alert('Đã đổi mã PIN'); }, 'new1');
@@ -1032,6 +1194,11 @@ function tra_(o) {
       const ev = todayDone().find(x => x.task === id), t = tasks().find(x => x.id === id);
       if (!ev) return;
       addEvent(S.current, -ev.d, `↩︎ Bỏ đánh dấu: ${t ? `${t.icon} ${t.name}` : ev.text}`, { type: 'undo', ref: ev.id });
+      if (!todayFull(S.current)) {
+        const u = undone(), dup = duplicates();
+        S.events.filter(e => e.type === 'streak' && e.kid === S.current && e.day === dayKey() && !u.has(e.id) && !dup.has(e.id))
+          .forEach(e => addEvent(S.current, -e.d, `↩︎ Bỏ thưởng chuỗi ${e.days} ngày`, { type: 'undo', ref: e.id }));
+      }
     } else if (act === 'backup') {
       const name = `sao-cho-be-${dayKey()}.json`;
       const { kids: k, tasks: t, rewards: r, events: ev, shared } = S;
