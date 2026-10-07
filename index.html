@@ -159,6 +159,9 @@
   .form small { font-weight: 600; }
   .form input[type=range] { width: 100%; accent-color: var(--star-dark); height: 32px; }
   .hist { font-size: 15px; }
+  .chips.filter { margin: 2px 0 12px; position: sticky; top: -18px; z-index: 2; background: var(--bg); padding: 8px 0; }
+  .chips.filter .chip { padding: 10px 14px; }
+  .chips.filter small { opacity: .6; font-weight: 800; }
   .streak { margin-top: 8px; font-weight: 800; font-size: 16px; color: #e5532d; }
   .streak small { color: var(--muted); font-weight: 700; }
   .emo-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
@@ -916,8 +919,11 @@ function tra_(o) {
   };
 
   /* ---------- Khu bố mẹ ---------- */
-  let tab = 'kids', editing = null, pick = null;
-  $('parentBtn').onclick = () => gate('Nhập mã PIN để vào khu bố mẹ', () => { tab = 'kids'; editing = null; renderParent(); open('parentSheet'); sync(); });
+  // pf: lọc danh sách việc/quà theo bé ('all' = tất cả các bé)
+  let tab = 'kids', editing = null, pick = null, pf = 'all';
+  const pfKid = () => kids().some(k => k.id === pf) ? pf : 'all';
+  const byFilter = list => pfKid() === 'all' ? list : list.filter(x => x.kidIds.includes(pf));
+  $('parentBtn').onclick = () => gate('Nhập mã PIN để vào khu bố mẹ', () => { tab = 'kids'; editing = null; pf = S.current; renderParent(); open('parentSheet'); sync(); });
   $('ptabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; editing = null; renderParent(); };
 
   const emojiPicker = (list, cur) => `<div class="emojis">${list.map(x => `<button type="button" data-emo="${x}" class="${x === cur ? 'on' : ''}">${x}</button>`).join('')}</div>`;
@@ -941,7 +947,7 @@ function tra_(o) {
       ${isKid ? `<div class="fl">Độ tuổi<span class="chips">${[['nho', '🧒 Bé nhỏ (3–6 tuổi)'], ['lon', '🧑 Bé lớn (7 tuổi trở lên)']].map(([v, t]) =>
         `<label class="chip"><input type="radio" name="fage" value="${v}" ${(item ? item.age : 'nho') === v ? 'checked' : ''}>${t}</label>`).join('')}</span>
         ${item ? '' : '<small>Bé mới tự có sẵn việc và quà hợp với độ tuổi, bố mẹ sửa lại tuỳ ý.</small>'}</div>` : `<div class="fl">Dành cho bé<span class="chips">${kids().map(k =>
-        `<label class="chip"><input type="checkbox" name="fkid" value="${k.id}" ${(item ? item.kidIds : [S.current]).includes(k.id) ? 'checked' : ''}>${k.avatar} ${esc(k.name)}</label>`).join('')}</span></div>`}
+        `<label class="chip"><input type="checkbox" name="fkid" value="${k.id}" ${(item ? item.kidIds : pfKid() === 'all' ? kids().map(x => x.id) : [pf]).includes(k.id) ? 'checked' : ''}>${k.avatar} ${esc(k.name)}</label>`).join('')}</span></div>`}
       <div style="display:flex;gap:8px"><button class="sbtn green" type="submit">${item ? 'Lưu' : 'Thêm'}</button><button class="sbtn" type="button" id="fcancel">Huỷ</button></div>
     </form>`;
   }
@@ -953,6 +959,8 @@ function tra_(o) {
     const body = $('pbody');
     const addBtn = label => editing === 'new' ? formHTML(tab, null) : `<button class="sbtn green" data-act="new" style="margin-bottom:12px">＋ ${label}</button>`;
     const forWho = it => { const ks = kids().filter(k => it.kidIds.includes(k.id)); return ks.length ? ks.map(k => `${k.avatar} ${esc(k.name)}`).join(', ') : '⚠️ chưa chọn bé'; };
+    const filterChips = () => `<div class="chips filter">${[['all', '👨‍👩‍👧 Tất cả'], ...kids().map(k => [k.id, `${k.avatar} ${esc(k.name)}`])]
+      .map(([id, label]) => `<button class="chip ${pfKid() === id ? 'on' : ''}" data-act="filter" data-id="${id}">${label}${id === 'all' ? '' : ` <small>${(tab === 'tasks' ? tasks() : rewards()).filter(x => x.kidIds.includes(id)).length}</small>`}</button>`).join('')}</div>`;
     const formFor = (it, html) => editing === it.id ? formHTML(tab, it) : html;
 
     if (tab === 'kids') {
@@ -966,10 +974,9 @@ function tra_(o) {
         </div>`)).join('') + `<p class="note">Dùng +1/−1 để thưởng thêm hoặc sửa khi bấm nhầm. Muốn bỏ đánh dấu một việc hôm nay, vào tab "Việc làm".</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="sbtn" data-act="pin">🔑 Đổi mã PIN bố mẹ</button><button class="sbtn" data-act="rec">🗝️ Xem mã khôi phục</button></div>`;
     } else if (tab === 'tasks') {
-      const done = doneToday();
-      body.innerHTML = `<p class="note">Việc được đánh dấu lại từ đầu mỗi ngày. Xem việc đã xong hôm nay của:</p>
-        <div class="chips" style="margin-bottom:12px">${kids().map(k => `<button class="chip ${k.id === S.current ? 'on' : ''}" data-act="see" data-id="${k.id}">${k.avatar} ${esc(k.name)}</button>`).join('')}</div>` +
-        addBtn('Thêm việc') + tasks().map((t, i) => formFor(t, `
+      const one = pfKid() !== 'all', done = one ? doneToday(pf) : [], list = byFilter(tasks());
+      body.innerHTML = filterChips() + `<p class="note">${one ? 'Đang xem việc của bé này; ✅ là việc đã xong hôm nay (việc tự đánh dấu lại mỗi ngày).' : 'Đang xem việc của tất cả các bé. Chọn một bé để xem việc đã xong hôm nay.'}</p>` +
+        addBtn('Thêm việc') + (list.length ? '' : '<div class="empty">Bé này chưa có việc nào.</div>') + list.map((t, i) => formFor(t, `
         <div class="row"><span class="e">${t.icon}</span>
           <span class="t">${esc(t.name)}<small>${stars(t.value)} · ${forWho(t)}${done.includes(t.id) ? ' · ✅ xong hôm nay' : ''}</small></span>
           ${done.includes(t.id) ? `<button class="sbtn" data-act="undo" data-id="${t.id}">↩︎ Bỏ đánh dấu</button>` : ''}
@@ -992,7 +999,7 @@ function tra_(o) {
             ${cfg.rules.map((r, i) => `<span class="rule">Mỗi <input type="number" min="1" max="365" data-rule="${i}" data-f="days" value="${r.days}"> ngày liên tiếp → +<input type="number" min="1" max="100" data-rule="${i}" data-f="stars" value="${r.stars}"> ⭐ <button type="button" class="sbtn red" data-act="rmrule" data-id="${i}">🗑</button></span>`).join('')}
             <button type="button" class="sbtn" data-act="addrule" style="justify-self:start">＋ Thêm mốc</button>
           </div>
-        </div>` + addBtn('Thêm phần quà') + rewards().map(r => formFor(r, `
+        </div>` + filterChips() + addBtn('Thêm phần quà') + (byFilter(rewards()).length ? '' : '<div class="empty">Bé này chưa có phần quà nào.</div>') + byFilter(rewards()).map(r => formFor(r, `
         <div class="row"><span class="e">${r.icon}</span>
           <span class="t">${esc(r.name)}<small>⭐ ${r.cost} sao · ${forWho(r)}</small></span>
           <button class="sbtn" data-act="edit" data-id="${r.id}">✏️</button>
@@ -1155,7 +1162,7 @@ function tra_(o) {
     const act = b.dataset.act, id = b.dataset.id;
     if (act === 'new') editing = 'new';
     else if (act === 'edit') editing = id;
-    else if (act === 'see') S.current = id;
+    else if (act === 'filter') { pf = id; editing = null; }
     else if (act === 'voice') { S.voice.name = id; say(`Chào ${kid().name}, con làm tốt lắm.`, true); }
     else if (act === 'vtest') { say(`Giỏi quá con ơi! ${kid().name} được thêm một ngôi sao nhé.`, true); return; }
     else if (act === 'vreset') { S.voice = { name: '', rate: .85, pitch: 1.05 }; say('Giỏi quá con ơi!', true); }
@@ -1184,20 +1191,21 @@ function tra_(o) {
         fixCurrent();
       }
     } else if (act === 'up') {
-      const list = tasks(), i = list.findIndex(x => x.id === id);
+      const list = byFilter(tasks()), i = list.findIndex(x => x.id === id);
       if (i > 0) {
         const a = list[i - 1], c = list[i];
         if (a.o === c.o) c.o = a.o - 1; else [a.o, c.o] = [c.o, a.o];
         touch(a); touch(c);
       }
     } else if (act === 'undo') {
-      const ev = todayDone().find(x => x.task === id), t = tasks().find(x => x.id === id);
+      const who = pfKid(); if (who === 'all') return;
+      const ev = todayDone(who).find(x => x.task === id), t = tasks().find(x => x.id === id);
       if (!ev) return;
-      addEvent(S.current, -ev.d, `↩︎ Bỏ đánh dấu: ${t ? `${t.icon} ${t.name}` : ev.text}`, { type: 'undo', ref: ev.id });
-      if (!todayFull(S.current)) {
+      addEvent(who, -ev.d, `↩︎ Bỏ đánh dấu: ${t ? `${t.icon} ${t.name}` : ev.text}`, { type: 'undo', ref: ev.id });
+      if (!todayFull(who)) {
         const u = undone(), dup = duplicates();
-        S.events.filter(e => e.type === 'streak' && e.kid === S.current && e.day === dayKey() && !u.has(e.id) && !dup.has(e.id))
-          .forEach(e => addEvent(S.current, -e.d, `↩︎ Bỏ thưởng chuỗi ${e.days} ngày`, { type: 'undo', ref: e.id }));
+        S.events.filter(e => e.type === 'streak' && e.kid === who && e.day === dayKey() && !u.has(e.id) && !dup.has(e.id))
+          .forEach(e => addEvent(who, -e.d, `↩︎ Bỏ thưởng chuỗi ${e.days} ngày`, { type: 'undo', ref: e.id }));
       }
     } else if (act === 'backup') {
       const name = `sao-cho-be-${dayKey()}.json`;

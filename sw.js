@@ -1,6 +1,6 @@
 // Lưu sẵn app vào máy để mở được khi không có mạng.
 // Đổi số phiên bản mỗi khi sửa app để máy tải bản mới.
-const CACHE = 'sao-cho-be-v9';
+const CACHE = 'sao-cho-be-v10';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
