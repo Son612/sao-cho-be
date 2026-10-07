@@ -39,6 +39,8 @@
   }
   button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
   input, select { font: inherit; }
+  /* Trang chặn bôi chọn chữ cho bé, nhưng ô nhập phải chọn/dán được (iPhone/iPad cần dòng này mới hiện nút "Dán") */
+  input, textarea { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
   .wrap { max-width: 960px; margin: 0 auto; padding: 12px 16px 120px; }
 
   /* Thanh trên */
@@ -146,7 +148,7 @@
   .sbtn.green { background: var(--ok); color: #fff; }
   .form { background: var(--card); border-radius: 18px; padding: 14px; display: grid; gap: 10px; margin-bottom: 14px; }
   .form label, .form .fl { font-weight: 700; font-size: 14px; color: var(--muted); display: grid; gap: 4px; }
-  .form input[type=text], .form input[type=number] { padding: 12px; border-radius: 12px; border: 2px solid var(--line); font-size: 18px; width: 100%; background: #fffdf6; color: var(--ink); }
+  .form input[type=text], .form input[type=url], .form input[type=number] { padding: 12px; border-radius: 12px; border: 2px solid var(--line); font-size: 18px; width: 100%; background: #fffdf6; color: var(--ink); }
   .emojis { display: flex; flex-wrap: wrap; gap: 6px; }
   .emojis button { font-size: 28px; width: 48px; height: 48px; border-radius: 12px; background: #fff8e4; }
   .emojis button.on { background: var(--star); }
@@ -158,11 +160,13 @@
   .form input[type=range] { width: 100%; accent-color: var(--star-dark); height: 32px; }
   .hist { font-size: 15px; }
   .topbtn[hidden] { display: none; }
-  .steps { margin: 0 0 14px; padding-left: 22px; line-height: 1.5; }
+  .setup { background: rgba(255,255,255,.55); border-radius: 18px; padding: 12px 14px; margin-bottom: 14px; }
+  .setup summary { cursor: pointer; line-height: 1.4; }
+  .steps { margin: 12px 0 0; padding-left: 22px; line-height: 1.5; }
   .steps li { margin-bottom: 8px; }
   .steps small { color: var(--muted); }
   .form > small, .form div > small { color: var(--muted); }
-  #syncUrl { font-size: 15px !important; }
+  #syncUrl { font-size: 16px !important; } /* dưới 16px thì iPhone tự phóng to khi chạm */
   .install { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 18px; padding: 10px 12px; margin-bottom: 10px; box-shadow: var(--shadow); font-size: 15px; font-weight: 600; }
   .install[hidden] { display: none; }
   .install .shr { display: inline-block; padding: 0 6px; border-radius: 6px; background: #e8f0ff; color: #2f6bff; font-weight: 900; }
@@ -884,23 +888,27 @@ function tra_(o) {
         </div>
         <p class="note">Máy khác (iPad, điện thoại của bố/mẹ…): mở app → Bố mẹ → Đồng bộ → dán mã này vào. Không cần đăng nhập Google, nhưng <b>chỉ gửi mã cho người trong nhà</b>: ai có mã đều xem và sửa được sao của các bé.</p>
         <p class="note">Xem dữ liệu: mở Google Trang tính "Sao Cho Bé" trong Google Drive của bạn — trang "Sổ sao" ghi lại mọi lần nhận/đổi sao.</p>`
-        : `<p class="note">Đồng bộ giúp iPad, điện thoại của bố, của mẹ… cùng thấy một số sao. Dữ liệu được lưu trong Google Trang tính <b>của chính bạn</b>, miễn phí. Chỉ cần làm một lần trên máy tính (khoảng 5 phút):</p>
-        <ol class="steps">
-          <li>Trên máy tính, mở <b>sheets.new</b> (tạo Google Trang tính mới), đặt tên <b>Sao Cho Bé</b>.</li>
-          <li>Chọn menu <b>Tiện ích mở rộng → Apps Script</b>.</li>
-          <li>Xoá hết chữ có sẵn, dán đoạn mã của app vào (bấm nút <b>📋 Sao chép đoạn mã</b> bên dưới), rồi bấm 💾 <b>Lưu</b>.</li>
-          <li>Bấm <b>Triển khai → Tùy chọn triển khai mới</b>. Bấm bánh răng ⚙️, chọn <b>Ứng dụng web</b>.<br>
-            Thực thi với tư cách: <b>Tôi</b> · Người có quyền truy cập: <b>Bất kỳ ai</b> → bấm <b>Triển khai</b>.</li>
-          <li>Google hỏi quyền: chọn tài khoản của bạn → <b>Nâng cao</b> → <b>Đi tới … (không an toàn)</b> → <b>Cho phép</b>.<br>
-            <small>Cảnh báo này hiện ra vì đoạn mã do bạn tự thêm, chưa qua Google duyệt. Đoạn mã chỉ đọc/ghi Trang tính này.</small></li>
-          <li>Sao chép <b>URL ứng dụng web</b> (dạng https://script.google.com/macros/s/…/exec), dán vào ô dưới và bấm <b>Kết nối</b>.</li>
-        </ol>
+        : `<p class="note">Đồng bộ giúp iPad, điện thoại của bố, của mẹ… cùng thấy một số sao. Dữ liệu lưu trong Google Trang tính <b>của chính bạn</b>, miễn phí.</p>
         <div class="form">
-          <button class="sbtn" data-act="copygs">📋 Sao chép đoạn mã</button>
-          <label>Mã đồng bộ (URL ứng dụng web)<input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-          <div style="display:flex;gap:8px;align-items:center"><button class="sbtn green" data-act="connect">Kết nối</button><small id="syncMsg"></small></div>
+          <div><b>Đã có mã đồng bộ?</b> <small>Dán vào đây là xong. Lấy mã từ máy đã kết nối: Bố mẹ → Đồng bộ → "Gửi mã cho máy khác".</small></div>
+          <input type="url" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="sbtn" data-act="paste">📋 Dán</button><button class="sbtn green" data-act="connect">Kết nối</button><small id="syncMsg"></small></div>
         </div>
-        <p class="note">Máy thứ hai trở đi chỉ cần làm bước cuối: dán cùng mã đồng bộ (máy đầu tiên có nút "Gửi mã cho máy khác").</p>`;
+        <details class="setup">
+          <summary><b>Chưa có mã? Tạo mã lần đầu</b> (chỉ làm một lần cho cả nhà, trên máy tính, khoảng 5 phút)</summary>
+          <ol class="steps">
+            <li>Trên máy tính, mở <b>sheets.new</b> (tạo Google Trang tính mới), đặt tên <b>Sao Cho Bé</b>.</li>
+            <li>Chọn menu <b>Tiện ích mở rộng → Apps Script</b>.</li>
+            <li>Xoá hết chữ có sẵn, dán đoạn mã của app vào, rồi bấm 💾 <b>Lưu</b>.<br>
+              <button class="sbtn" data-act="copygs" style="margin-top:6px">📋 Sao chép đoạn mã</button></li>
+            <li>Bấm <b>Triển khai → Tùy chọn triển khai mới</b>. Bấm bánh răng ⚙️, chọn <b>Ứng dụng web</b>.<br>
+              Thực thi với tư cách: <b>Tôi</b> · Người có quyền truy cập: <b>Bất kỳ ai</b> → bấm <b>Triển khai</b>.</li>
+            <li>Bấm <b>Ủy quyền truy cập</b>, chọn tài khoản của bạn → <b>Nâng cao</b> → <b>Đi tới … (không an toàn)</b> → <b>Cho phép</b>.<br>
+              <small>Cảnh báo này hiện ra vì đoạn mã do bạn tự thêm, chưa qua Google duyệt. Đoạn mã chỉ đọc/ghi đúng Trang tính này.</small></li>
+            <li>Sao chép <b>URL ứng dụng web</b> — đó là mã đồng bộ — dán vào ô phía trên và bấm <b>Kết nối</b>.<br>
+              <small>Quên mã? Mở lại Apps Script → Triển khai → Quản lý các lần triển khai.</small></li>
+          </ol>
+        </details>`;
     } else {
       const names = Object.fromEntries(S.kids.map(k => [k.id, `${k.avatar} ${esc(k.name)}`]));
       // Tổng sao 7 ngày gần nhất theo từng bé
@@ -1020,6 +1028,10 @@ function tra_(o) {
       const code = $('gsCode').textContent.trim();
       try { await navigator.clipboard.writeText(code); b.textContent = '✅ Đã sao chép — dán vào Apps Script'; }
       catch { prompt('Sao chép đoạn mã này:', code); }
+      return;
+    } else if (act === 'paste') {
+      try { $('syncUrl').value = (await navigator.clipboard.readText()).trim(); }
+      catch { $('syncUrl').focus(); alert('Chạm giữ vào ô trống rồi chọn "Dán" nhé.'); }
       return;
     } else if (act === 'connect') { connect($('syncUrl').value); return; }
     else if (act === 'syncnow') { sync(); renderParent(); return; }
