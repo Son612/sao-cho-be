@@ -1,0 +1,1064 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sao Cho Bé">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#fff4d6">
+<meta name="robots" content="noindex, nofollow">
+<title>Sao Cho Bé</title>
+<style>
+  :root {
+    --bg: #fff4d6;
+    --bg2: #ffe7a8;
+    --card: #ffffff;
+    --ink: #3a2a14;
+    --muted: #8a7558;
+    --star: #ffb800;
+    --star-dark: #e08a00;
+    --ok: #3bb273;
+    --danger: #e5484d;
+    --accent: #ff7a59;
+    --line: #f0dfb4;
+    --shadow: 0 6px 0 rgba(160, 110, 20, .18);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(circle at 20% 0%, #fffaf0 0, var(--bg) 40%, var(--bg2) 100%) fixed;
+    color: var(--ink);
+    font-family: ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+    user-select: none; -webkit-user-select: none;
+    overflow-x: hidden;
+  }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+  input, select { font: inherit; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 12px 16px 120px; }
+
+  /* Thanh trên */
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 0 12px; }
+  .kids { display: flex; gap: 10px; flex: 1; overflow-x: auto; padding: 4px 2px 8px; }
+  .kid {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    min-width: 76px; padding: 8px 10px; border-radius: 20px; background: rgba(255,255,255,.55);
+    border: 3px solid transparent; transition: transform .15s;
+  }
+  .kid .av { font-size: 38px; line-height: 1; }
+  .kid .nm { font-weight: 700; font-size: 15px; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kid.on { background: var(--card); border-color: var(--star); box-shadow: var(--shadow); transform: translateY(-2px); }
+  .topbtn {
+    width: 56px; height: 56px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow);
+    font-size: 28px; display: grid; place-items: center;
+  }
+
+  /* Bảng sao */
+  .hero {
+    display: flex; align-items: center; gap: 16px; background: var(--card); border-radius: 28px;
+    padding: 16px 20px; box-shadow: var(--shadow); margin-bottom: 18px;
+  }
+  .bigstar { font-size: 64px; line-height: 1; filter: drop-shadow(0 3px 0 var(--star-dark)); }
+  .bigstar.pop { animation: pop .5s ease; }
+  .count { font-size: 56px; font-weight: 900; line-height: 1; color: var(--star-dark); }
+  .hero .sub { color: var(--muted); font-weight: 600; font-size: 16px; margin-top: 4px; }
+  .hero .grow { flex: 1; min-width: 0; }
+  .bar { height: 18px; background: #fff1c9; border-radius: 99px; overflow: hidden; margin-top: 10px; border: 2px solid var(--line); }
+  .bar > i { display: block; height: 100%; background: linear-gradient(90deg, #ffd34d, var(--star)); border-radius: 99px; transition: width .6s cubic-bezier(.2,1.4,.4,1); }
+  .today { text-align: center; font-weight: 800; font-size: 15px; color: var(--muted); }
+  .today b { display: block; font-size: 30px; color: var(--ok); }
+
+  h2 { font-size: 22px; margin: 6px 4px 12px; display: flex; align-items: center; gap: 8px; }
+
+  /* Lưới việc */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .task {
+    position: relative; background: var(--card); border-radius: 26px; padding: 16px 10px 14px;
+    box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; gap: 6px;
+    transition: transform .12s, opacity .3s; min-height: 170px; justify-content: center;
+  }
+  .task:active { transform: scale(.94); }
+  .task .ic { font-size: 64px; line-height: 1.1; }
+  .task .tn { font-weight: 800; font-size: 18px; text-align: center; line-height: 1.2; }
+  .task .ts { font-size: 18px; letter-spacing: 1px; }
+  .task.done { background: #eafaf0; box-shadow: 0 6px 0 rgba(59,178,115,.25); }
+  .task.done .ic { opacity: .45; }
+  .task.done::after {
+    content: "✓"; position: absolute; top: 8px; right: 12px; width: 40px; height: 40px; border-radius: 50%;
+    background: var(--ok); color: #fff; font-weight: 900; font-size: 26px; display: grid; place-items: center;
+    animation: pop .4s ease;
+  }
+  .task.wiggle { animation: wiggle .4s ease; }
+
+  /* Thanh dưới */
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 12px;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, rgba(255,231,168,.95) 35%);
+  }
+  .bigbtn {
+    padding: 16px 26px; border-radius: 22px; background: var(--accent); color: #fff; font-weight: 900; font-size: 20px;
+    box-shadow: 0 6px 0 #c9532f; display: flex; align-items: center; gap: 8px;
+  }
+  .bigbtn:active { transform: translateY(3px); box-shadow: 0 3px 0 #c9532f; }
+  .bigbtn.alt { background: #6c8cff; box-shadow: 0 6px 0 #4560c4; }
+
+  /* Màn hình phủ */
+  .sheet { position: fixed; inset: 0; background: rgba(58,42,20,.45); display: none; align-items: flex-end; justify-content: center; z-index: 20; }
+  .sheet.open { display: flex; animation: fade .2s; }
+  .panel {
+    background: var(--bg); width: 100%; max-width: 760px; max-height: 92vh; overflow-y: auto;
+    border-radius: 28px 28px 0 0; padding: 18px 16px calc(24px + env(safe-area-inset-bottom)); animation: up .25s ease;
+  }
+  @media (min-width: 700px) { .sheet { align-items: center; } .panel { border-radius: 28px; } }
+  .ph { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .ph h3 { flex: 1; margin: 0; font-size: 24px; }
+  .x { width: 48px; height: 48px; border-radius: 16px; background: var(--card); font-size: 24px; box-shadow: var(--shadow); }
+
+  .reward { cursor: pointer; }
+  .reward .cost { font-weight: 900; color: var(--star-dark); font-size: 18px; }
+  .reward.locked { opacity: .55; }
+  .reward.ready { outline: 4px solid var(--star); animation: glow 1.6s ease-in-out infinite; }
+
+  /* Cổng phụ huynh */
+  .gate { text-align: center; }
+  .gate .q { font-size: 44px; font-weight: 900; margin: 8px 0; }
+  .gate .ans { font-size: 40px; font-weight: 900; min-height: 56px; letter-spacing: 4px; color: var(--accent); }
+  .pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 320px; margin: 12px auto 0; }
+  .pad button { height: 64px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); font-size: 28px; font-weight: 800; }
+
+  /* Khu bố mẹ */
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tabs button { padding: 10px 14px; border-radius: 14px; background: rgba(255,255,255,.6); font-weight: 800; }
+  .tabs button.on { background: var(--card); box-shadow: var(--shadow); }
+  .row {
+    display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 18px; padding: 10px 12px;
+    margin-bottom: 10px; box-shadow: 0 3px 0 rgba(160,110,20,.12); flex-wrap: wrap;
+  }
+  .row .e { font-size: 32px; width: 44px; text-align: center; }
+  .row .t { flex: 1; min-width: 120px; font-weight: 700; }
+  .row .t small { display: block; color: var(--muted); font-weight: 600; }
+  .sbtn { padding: 10px 14px; border-radius: 12px; background: #fff1c9; font-weight: 800; min-width: 44px; min-height: 44px; }
+  .sbtn.red { background: #ffe1e1; color: var(--danger); }
+  .sbtn.green { background: var(--ok); color: #fff; }
+  .form { background: var(--card); border-radius: 18px; padding: 14px; display: grid; gap: 10px; margin-bottom: 14px; }
+  .form label, .form .fl { font-weight: 700; font-size: 14px; color: var(--muted); display: grid; gap: 4px; }
+  .form input[type=text], .form input[type=number] { padding: 12px; border-radius: 12px; border: 2px solid var(--line); font-size: 18px; width: 100%; background: #fffdf6; color: var(--ink); }
+  .emojis { display: flex; flex-wrap: wrap; gap: 6px; }
+  .emojis button { font-size: 28px; width: 48px; height: 48px; border-radius: 12px; background: #fff8e4; }
+  .emojis button.on { background: var(--star); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip, .form .chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 12px; background: #fff8e4; font-weight: 700; color: var(--ink); font-size: 16px; }
+  .chip.on { background: var(--star); }
+  .chip input { width: 20px; height: 20px; margin: 0; accent-color: var(--star-dark); }
+  .form small { font-weight: 600; }
+  .form input[type=range] { width: 100%; accent-color: var(--star-dark); height: 32px; }
+  .hist { font-size: 15px; }
+  .topbtn[hidden] { display: none; }
+  .steps { margin: 0 0 14px; padding-left: 22px; line-height: 1.5; }
+  .steps li { margin-bottom: 8px; }
+  .steps small { color: var(--muted); }
+  .form > small, .form div > small { color: var(--muted); }
+  #syncUrl { font-size: 15px !important; }
+  .install { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 18px; padding: 10px 12px; margin-bottom: 10px; box-shadow: var(--shadow); font-size: 15px; font-weight: 600; }
+  .install[hidden] { display: none; }
+  .install .shr { display: inline-block; padding: 0 6px; border-radius: 6px; background: #e8f0ff; color: #2f6bff; font-weight: 900; }
+  .wrap { padding-top: max(12px, env(safe-area-inset-top)); }
+  .hist .row { padding: 8px 12px; }
+  .plus { color: var(--ok); font-weight: 900; }
+  .minus { color: var(--danger); font-weight: 900; }
+  .empty { text-align: center; color: var(--muted); padding: 24px; font-weight: 700; }
+  .note { color: var(--muted); font-size: 14px; margin: 4px 4px 12px; }
+
+  /* Ăn mừng */
+  .fly { position: fixed; z-index: 50; font-size: 48px; pointer-events: none; }
+  .party { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+  .party span { position: absolute; top: -40px; font-size: 28px; animation: fall linear forwards; }
+  .cheer {
+    position: fixed; inset: 0; z-index: 45; display: none; align-items: center; justify-content: center;
+    flex-direction: column; background: rgba(255,244,214,.88); text-align: center; padding: 20px;
+  }
+  .cheer.open { display: flex; animation: fade .2s; }
+  .cheer .ce { font-size: 120px; animation: bounce 1s ease infinite; }
+  .cheer .ct { font-size: 34px; font-weight: 900; margin-top: 8px; }
+  .cheer .cs { font-size: 20px; color: var(--muted); font-weight: 700; margin: 6px 0 20px; }
+
+  @keyframes pop { 0% { transform: scale(.4); } 60% { transform: scale(1.25); } 100% { transform: scale(1); } }
+  @keyframes wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-5deg); } 75% { transform: rotate(5deg); } }
+  @keyframes fade { from { opacity: 0; } }
+  @keyframes up { from { transform: translateY(40px); opacity: 0; } }
+  @keyframes fall { to { transform: translateY(110vh) rotate(540deg); } }
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
+  @keyframes glow { 50% { outline-color: #ffe08a; } }
+  @media (max-width: 480px) {
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .task { min-height: 150px; } .task .ic { font-size: 54px; } .task .tn { font-size: 16px; }
+    .count { font-size: 46px; } .bigstar { font-size: 52px; }
+    .bigbtn { padding: 14px 18px; font-size: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="install" id="install" hidden>
+    <span style="font-size:30px">📲</span>
+    <span>Cài thành app: bấm nút <b>Chia sẻ</b> <span class="shr">⬆︎</span> rồi chọn <b>Thêm vào MH chính</b>. Nên cài trước khi bé bắt đầu tích sao.</span>
+    <button class="sbtn" id="installX">✕</button>
+  </div>
+  <header>
+    <div class="kids" id="kids"></div>
+    <button class="topbtn" id="syncBtn" hidden title="Đồng bộ">☁️</button>
+    <button class="topbtn" id="soundBtn" title="Bật/tắt âm thanh">🔊</button>
+  </header>
+
+  <section class="hero">
+    <div class="bigstar" id="bigstar">⭐</div>
+    <div class="grow">
+      <div class="count" id="count">0</div>
+      <div class="sub" id="goal"></div>
+      <div class="bar"><i id="bar" style="width:0"></i></div>
+    </div>
+    <div class="today">Hôm nay<b id="today">0</b></div>
+  </section>
+
+  <h2>🌞 Việc của bé hôm nay</h2>
+  <div class="grid" id="tasks"></div>
+</div>
+
+<div class="dock">
+  <button class="bigbtn" id="rewardBtn">🎁 Đổi quà</button>
+  <button class="bigbtn alt" id="parentBtn">👨‍👩‍👧 Bố mẹ</button>
+</div>
+
+<!-- Đổi quà -->
+<div class="sheet" id="rewardSheet"><div class="panel">
+  <div class="ph"><h3>🎁 Đổi sao lấy quà</h3><button class="x" data-close>✕</button></div>
+  <p class="note">Bé chạm vào món quà muốn đổi, bố mẹ xác nhận nhé.</p>
+  <div class="grid" id="rewards"></div>
+</div></div>
+
+<!-- Cổng phụ huynh -->
+<div class="sheet" id="gateSheet"><div class="panel gate">
+  <div class="ph"><h3>🔒 Dành cho bố mẹ</h3><button class="x" data-close>✕</button></div>
+  <div class="note" id="gateWhy"></div>
+  <div class="q" id="gateQ"></div>
+  <div class="ans" id="gateA"></div>
+  <div class="pad" id="pad"></div>
+  <button class="sbtn" id="forgot" style="margin-top:16px">Quên mã PIN?</button>
+</div></div>
+
+<!-- Khu bố mẹ -->
+<div class="sheet" id="parentSheet"><div class="panel">
+  <div class="ph"><h3>👨‍👩‍👧 Khu bố mẹ</h3><button class="x" data-close>✕</button></div>
+  <div class="tabs" id="ptabs">
+    <button data-tab="kids">Các bé</button>
+    <button data-tab="tasks">Việc làm</button>
+    <button data-tab="rewards">Phần quà</button>
+    <button data-tab="voice">Giọng nói</button>
+    <button data-tab="sync">Đồng bộ</button>
+    <button data-tab="hist">Lịch sử</button>
+  </div>
+  <div id="pbody"></div>
+</div></div>
+
+<div class="cheer" id="cheer">
+  <div class="ce" id="cheerE">🏆</div>
+  <div class="ct" id="cheerT"></div>
+  <div class="cs" id="cheerS"></div>
+  <button class="bigbtn" id="cheerOk">Yeah! 🎉</button>
+</div>
+<div class="party" id="party"></div>
+
+<!-- Đoạn mã dán vào Google Apps Script để đồng bộ (nút "Sao chép đoạn mã" trong tab Đồng bộ) -->
+<script type="text/plain" id="gsCode">
+/**
+ * @OnlyCurrentDoc
+ * Sao Cho Bé — đồng bộ qua Google Trang tính.
+ * Dòng @OnlyCurrentDoc ở trên giúp đoạn mã chỉ xin quyền với ĐÚNG Trang tính này,
+ * không đụng tới tệp nào khác trong Google Drive.
+ */
+// Dán toàn bộ đoạn này vào Apps Script, bấm Lưu, rồi Triển khai → Ứng dụng web
+// (Thực thi với tư cách: Tôi · Người có quyền truy cập: Bất kỳ ai).
+const SO_SAO = 'Sổ sao', MUC = 'Bé, việc, quà';
+
+function doGet() {
+  return tra_({ ok: true, app: 'sao-cho-be' });
+}
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const so = trang_(ss, SO_SAO, ['Mã', 'Thời gian', 'Bé', 'Sao', 'Nội dung', 'Dữ liệu']);
+    const mu = trang_(ss, MUC, ['Mã', 'Loại', 'Sửa lúc', 'Tên', 'Dữ liệu']);
+
+    // Sổ sao: chỉ thêm dòng mới, dòng đã có thì bỏ qua
+    const nSo = so.getLastRow() - 1;
+    const daCo = new Set(nSo > 0 ? so.getRange(2, 1, nSo, 1).getValues().map(r => String(r[0])) : []);
+    const moi = (req.events || []).filter(x => x && x.id && !daCo.has(String(x.id)));
+    if (moi.length) {
+      so.getRange(nSo + 2, 1, moi.length, 6).setValues(moi.map(x =>
+        [x.id, new Date(x.t), x.kn || '', x.d, x.text || '', JSON.stringify(x)]));
+    }
+
+    // Bé, việc, quà: mỗi mục một dòng, giữ bản sửa sau cùng
+    const nMu = mu.getLastRow() - 1;
+    const rows = nMu > 0 ? mu.getRange(2, 1, nMu, 5).getValues() : [];
+    const viTri = {};
+    rows.forEach((r, i) => { viTri[String(r[0])] = i; });
+    let sua = false;
+    (req.items || []).forEach(x => {
+      if (!x || !x.id) return;
+      const dong = [x.id, x.k, x.u, (x.del ? '(đã xoá) ' : '') + (x.name || ''), JSON.stringify(x)];
+      const i = viTri[String(x.id)];
+      if (i === undefined) { viTri[String(x.id)] = rows.length; rows.push(dong); sua = true; }
+      else if (Number(x.u) > Number(rows[i][2])) { rows[i] = dong; sua = true; }
+    });
+    if (sua) mu.getRange(2, 1, rows.length, 5).setValues(rows);
+
+    // Gửi lại những dòng sổ sao máy kia chưa có, và toàn bộ bé/việc/quà
+    const tong = so.getLastRow() - 1;
+    const tu = Math.max(0, Math.min(Number(req.cursor) || 0, tong));
+    const events = tong > tu ? so.getRange(2 + tu, 6, tong - tu, 1).getValues().map(r => JSON.parse(r[0])) : [];
+    return tra_({ ok: true, cursor: tong, events: events, items: rows.map(r => JSON.parse(r[4])) });
+  } catch (err) {
+    return tra_({ ok: false, error: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function trang_(ss, ten, tieuDe) {
+  let sh = ss.getSheetByName(ten);
+  if (!sh) {
+    sh = ss.insertSheet(ten);
+    sh.getRange('A:A').setNumberFormat('@');
+    sh.appendRow(tieuDe);
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+function tra_(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+</script>
+
+<script>
+(() => {
+  const KEY = 'sao-cho-be-v2', OLD_KEY = 'sao-cho-be-v1';
+  const $ = id => document.getElementById(id);
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const stars = n => '⭐'.repeat(Math.min(n, 5)) + (n > 5 ? ` ×${n}` : '');
+
+  const KID_EMOJI = ['🐻', '🐰', '🐱', '🐶', '🦁', '🐼', '🐸', '🦄', '🐯', '🐵', '🐥', '🦊'];
+  const TASK_EMOJI = ['🪥', '🍚', '🧸', '👕', '🧼', '😴', '📚', '🧹', '🚽', '🥛', '🥦', '🛁', '🎒', '🙏', '🖍️', '🎹', '⚽', '🌱', '🍽️', '👟', '💧', '🤝', '🧩', '🐟'];
+  const REWARD_EMOJI = ['📺', '🍦', '🎡', '🧸', '🍭', '🎈', '🚗', '📖', '🍕', '🏊', '🎮', '🛝', '🍰', '🎁'];
+
+  // Bộ gợi ý theo độ tuổi: 'nho' = 3–6 tuổi, 'lon' = 7 tuổi trở lên
+  const SUGGEST = {
+    nho: {
+      tasks: [['Đánh răng', '🪥', 1], ['Tự ăn cơm', '🍚', 1], ['Cất đồ chơi', '🧸', 1], ['Tự mặc áo', '👕', 1],
+        ['Rửa tay', '🧼', 1], ['Đi ngủ đúng giờ', '😴', 1], ['Đọc sách', '📚', 1], ['Giúp bố mẹ', '🧹', 2]],
+      rewards: [['Xem hoạt hình 15 phút', '📺', 5], ['Ăn kem', '🍦', 10], ['Đi công viên', '🎡', 20], ['Đồ chơi mới', '🧸', 50]],
+    },
+    lon: {
+      tasks: [['Làm bài tập về nhà', '📝', 2], ['Tự soạn cặp sách', '🎒', 1], ['Đọc sách 30 phút', '📚', 2], ['Gấp quần áo', '👕', 1],
+        ['Rửa bát', '🍽️', 2], ['Dọn phòng', '🧹', 2], ['Tập thể thao', '⚽', 1], ['Giúp em', '🤝', 2]],
+      rewards: [['Chơi game 30 phút', '🎮', 10], ['Chọn món ăn tối', '🍕', 15], ['Truyện/sách mới', '📖', 30], ['Đi xem phim', '🎬', 50]],
+    },
+  };
+
+  /* ---------- Dữ liệu ----------
+     Dùng chung giữa các máy (được đồng bộ):
+       kids / tasks / rewards — mỗi mục có k (loại), u (lúc sửa), del (đã xoá); máy nào sửa sau cùng thì thắng
+       shared — mã PIN bố mẹ
+       events — sổ sao: mỗi lần nhận/đổi/chỉnh sao là một dòng, không bao giờ sửa → số sao = cộng cả sổ
+     Chỉ của máy này: current, sound, voice, sync (mã đồng bộ), out (những gì chưa gửi lên) */
+  const blank = () => ({
+    kids: [], tasks: [], rewards: [], events: [], shared: { id: 'shared', k: 'shared', pin: null, u: 0 },
+    current: null, sound: true, voice: null, sync: { url: '', cursor: 0, last: 0, err: '' }, out: { ev: [], it: [] },
+  });
+  // Dữ liệu bản cũ (chưa có sổ sao): giữ bé/việc/quà, số sao chuyển thành một dòng "số sao trước đây"
+  function fromV1(o) {
+    const st = blank(), all = (o.kids || []).map(k => k.id);
+    st.kids = (o.kids || []).map(k => ({ id: k.id, k: 'kid', name: k.name, avatar: k.avatar, age: k.age || 'nho', u: 1 }));
+    st.tasks = (o.tasks || []).map((t, i) => ({ id: t.id, k: 'task', name: t.name, icon: t.icon, value: t.value, kidIds: t.kidIds || all, o: i, u: 1 }));
+    st.rewards = (o.rewards || []).map(r => ({ id: r.id, k: 'reward', name: r.name, icon: r.icon, cost: r.cost, kidIds: r.kidIds || all, u: 1 }));
+    (o.kids || []).forEach(k => k.stars > 0 && st.events.push({ id: uid(), t: Date.now(), kid: k.id, kn: k.name, d: k.stars, type: 'adjust', text: '⭐ Số sao trước đây' }));
+    Object.assign(st.shared, { pin: o.pin || null, u: o.pin ? 1 : 0 });
+    Object.assign(st, { current: o.current, sound: o.sound !== false, voice: o.voice || null });
+    return st;
+  }
+  function load() {
+    try { const v2 = JSON.parse(localStorage.getItem(KEY)); if (v2 && v2.events) return Object.assign(blank(), v2); } catch {}
+    try { const v1 = JSON.parse(localStorage.getItem(OLD_KEY)); if (v1 && v1.kids) return fromV1(v1); } catch {}
+    return blank();
+  }
+  let S = load();
+
+  const live = arr => arr.filter(x => !x.del);
+  const kids = () => live(S.kids);
+  const tasks = () => live(S.tasks).sort((a, b) => a.o - b.o);
+  const rewards = () => live(S.rewards);
+  const kid = () => kids().find(k => k.id === S.current);
+  const myTasks = (kidId = S.current) => tasks().filter(t => t.kidIds.includes(kidId));
+  const myRewards = (kidId = S.current) => rewards().filter(r => r.kidIds.includes(kidId));
+  const undone = () => new Set(S.events.filter(e => e.type === 'undo').map(e => e.ref));
+  // Cùng một việc trong ngày được bấm trên hai máy trước khi kịp đồng bộ → chỉ tính lần đầu
+  function duplicates() {
+    const u = undone(), seen = new Set(), dup = new Set();
+    for (const e of S.events.slice().sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1))) {
+      if (e.type !== 'task' || u.has(e.id)) continue;
+      const key = `${e.kid}|${e.day}|${e.task}`;
+      if (seen.has(key)) dup.add(e.id); else seen.add(key);
+    }
+    return dup;
+  }
+  const starsOf = kidId => { const dup = duplicates(); return Math.max(0, S.events.reduce((s, e) => e.kid === kidId && !dup.has(e.id) ? s + e.d : s, 0)); };
+  // Các lần hoàn thành việc hôm nay (chưa bị bố mẹ bỏ đánh dấu)
+  const todayDone = (kidId = S.current) => {
+    const day = dayKey(), u = undone(), dup = duplicates();
+    return S.events.filter(e => e.type === 'task' && e.kid === kidId && e.day === day && !u.has(e.id) && !dup.has(e.id));
+  };
+  const doneToday = kidId => todayDone(kidId).map(e => e.task);
+
+  // Đánh dấu một mục vừa sửa để gửi lên dữ liệu chung
+  function touch(it) { it.u = Date.now(); if (!S.out.it.includes(it.id)) S.out.it.push(it.id); }
+  function addEvent(kidId, d, text, extra) {
+    const k = S.kids.find(x => x.id === kidId);
+    const e = Object.assign({ id: uid(), t: Date.now(), kid: kidId, kn: k ? k.name : '', d, text, type: 'adjust' }, extra);
+    S.events.push(e); S.out.ev.push(e.id);
+    return e;
+  }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} scheduleSync(); };
+
+  // Thêm bé mới: dùng chung việc/quà với bé cùng độ tuổi; nếu chưa có bé nào cùng tuổi thì tạo bộ gợi ý
+  function addKid({ name, avatar, age }) {
+    const k = { id: uid(), k: 'kid', name, avatar, age };
+    const peers = kids().filter(x => x.age === age).map(x => x.id);
+    S.kids.push(k); touch(k);
+    const join = it => { it.kidIds = [...it.kidIds, k.id]; touch(it); };
+    if (peers.length) {
+      [...tasks(), ...rewards()].filter(it => it.kidIds.some(id => peers.includes(id))).forEach(join);
+      return k;
+    }
+    let o = tasks().reduce((m, t) => Math.max(m, t.o), -1);
+    for (const [name, icon, value] of SUGGEST[age].tasks) {
+      const same = tasks().find(t => t.name === name);
+      if (same) join(same);
+      else { const t = { id: uid(), k: 'task', name, icon, value, kidIds: [k.id], o: ++o }; S.tasks.push(t); touch(t); }
+    }
+    for (const [name, icon, cost] of SUGGEST[age].rewards) {
+      const same = rewards().find(r => r.name === name);
+      if (same) join(same);
+      else { const r = { id: uid(), k: 'reward', name, icon, cost, kidIds: [k.id] }; S.rewards.push(r); touch(r); }
+    }
+    return k;
+  }
+  function fixCurrent() {
+    if (!kids().length) addKid({ name: 'Bé', avatar: '🐻', age: 'nho' });
+    if (!kid()) S.current = kids()[0].id;
+  }
+
+  /* ---------- Đồng bộ qua Google Trang tính của gia đình ---------- */
+  let syncing = false, syncTimer = 0;
+  const findItem = id => id === 'shared' ? S.shared : [...S.kids, ...S.tasks, ...S.rewards].find(x => x.id === id);
+  function scheduleSync(ms = 1500) { if (!S.sync.url) return; clearTimeout(syncTimer); syncTimer = setTimeout(sync, ms); }
+  async function call(url, body) {
+    // Gửi dạng chữ thường (không đặt Content-Type) để trình duyệt không chặn khi gọi sang Google
+    const r = await fetch(url, { method: 'POST', body: JSON.stringify(body) });
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'Lỗi');
+    return j;
+  }
+  // Gộp dữ liệu từ Google vào máy: thêm dòng sổ sao chưa có, mục nào sửa sau thì lấy
+  function merge(res) {
+    let changed = false;
+    const have = new Set(S.events.map(e => e.id));
+    for (const e of res.events || []) if (!have.has(e.id)) { S.events.push(e); have.add(e.id); changed = true; }
+    if (changed) S.events.sort((a, b) => a.t - b.t);
+    for (const it of res.items || []) {
+      if (it.k === 'shared') { if (it.u > S.shared.u) { S.shared = it; changed = true; } continue; }
+      const arr = { kid: S.kids, task: S.tasks, reward: S.rewards }[it.k];
+      if (!arr) continue;
+      const i = arr.findIndex(x => x.id === it.id);
+      if (i < 0) { arr.push(it); changed = true; }
+      else if (it.u > arr[i].u) { arr[i] = it; changed = true; }
+    }
+    if (changed) fixCurrent();
+    return changed;
+  }
+  async function sync() {
+    if (!S.sync.url || syncing) return;
+    if (!navigator.onLine) { S.sync.err = 'Mất mạng, sẽ tự gửi khi có mạng lại'; syncBadge(); return; }
+    syncing = true; syncBadge();
+    const evIds = S.out.ev.slice(), sent = Object.fromEntries(S.out.it.map(id => [id, (findItem(id) || {}).u]));
+    let changed = false;
+    try {
+      const res = await call(S.sync.url, {
+        cursor: S.sync.cursor,
+        events: evIds.map(id => S.events.find(e => e.id === id)).filter(Boolean),
+        items: Object.keys(sent).map(findItem).filter(Boolean),
+      });
+      // Bỏ khỏi hàng chờ những gì đã gửi (mục bị sửa tiếp trong lúc gửi thì giữ lại để gửi lần sau)
+      S.out.ev = S.out.ev.filter(id => !evIds.includes(id));
+      S.out.it = S.out.it.filter(id => !(id in sent) || (findItem(id) || {}).u !== sent[id]);
+      changed = merge(res);
+      Object.assign(S.sync, { cursor: res.cursor, last: Date.now(), err: '' });
+    } catch {
+      S.sync.err = navigator.onLine ? 'Không kết nối được với Google Trang tính' : 'Mất mạng, sẽ tự gửi khi có mạng lại';
+    }
+    syncing = false;
+    try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {}
+    syncBadge();
+    if (changed) { render(); if ($('parentSheet').classList.contains('open') && !editing) renderParent(); }
+    else if (tab === 'sync' && $('parentSheet').classList.contains('open')) renderParent();
+  }
+  async function connect(url) {
+    url = url.trim();
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) {
+      alert('Mã đồng bộ phải là đường link dạng:\nhttps://script.google.com/macros/s/…/exec'); return;
+    }
+    $('syncMsg').textContent = 'Đang kết nối…';
+    let res;
+    try { res = await call(url, { cursor: 0, events: [], items: [] }); }
+    catch {
+      $('syncMsg').textContent = '';
+      alert('Không kết nối được. Kiểm tra lại: đường link đúng, máy có mạng, và lúc triển khai đã chọn "Người có quyền truy cập: Bất kỳ ai".');
+      return;
+    }
+    const remoteKids = (res.items || []).filter(x => x.k === 'kid' && !x.del);
+    if (remoteKids.length) {
+      if (!confirm(`Dữ liệu chung đã có: ${remoteKids.map(k => `${k.avatar} ${k.name}`).join(', ')}.\n\nMáy này sẽ dùng dữ liệu chung đó. Dữ liệu đang có riêng trên máy này sẽ được thay thế.`)) { $('syncMsg').textContent = ''; return; }
+      Object.assign(S, { kids: [], tasks: [], rewards: [], events: [], shared: blank().shared, out: { ev: [], it: [] } });
+      merge(res);
+      S.sync = { url, cursor: res.cursor, last: Date.now(), err: '' };
+    } else {
+      // Dữ liệu chung còn trống: đưa toàn bộ dữ liệu của máy này lên
+      S.out = { ev: S.events.map(e => e.id), it: ['shared', ...[...S.kids, ...S.tasks, ...S.rewards].map(x => x.id)] };
+      S.sync = { url, cursor: 0, last: 0, err: '' };
+    }
+    save(); render();
+    await sync();
+    renderParent();
+  }
+  function syncBadge() {
+    const b = $('syncBtn');
+    b.hidden = !S.sync.url;
+    b.textContent = syncing ? '🔄' : S.sync.err ? '⚠️' : '☁️';
+    b.title = syncing ? 'Đang đồng bộ…' : S.sync.err || 'Đã đồng bộ';
+  }
+  $('syncBtn').onclick = () => { S.sync.err ? alert(S.sync.err) : 0; sync(); };
+
+  /* ---------- Âm thanh & giọng nói ---------- */
+  let ac;
+  function chime(notes = [660, 880, 1320], gap = .09) {
+    if (!S.sound) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === 'suspended') ac.resume();
+      notes.forEach((f, i) => {
+        const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * gap;
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.25, t + .02); g.gain.exponentialRampToValueAtTime(.001, t + .45);
+        o.connect(g).connect(ac.destination); o.start(t); o.stop(t + .5);
+      });
+    } catch {}
+  }
+  // Giọng đọc: ưu tiên giọng tự nhiên nhất máy có (bản Nâng cao/Cao cấp, giọng "Natural" của Edge, giọng Google)
+  S.voice = Object.assign({ name: '', rate: .85, pitch: 1.05 }, S.voice);
+  const viVoices = () => ('speechSynthesis' in window ? speechSynthesis.getVoices() : [])
+    .filter(v => /^vi/i.test(v.lang));
+  const voiceScore = v => /natural|neural/i.test(v.name) ? 4 : /premium|cao cấp/i.test(v.name) ? 3
+    : /enhanced|nâng cao/i.test(v.name) ? 2 : /google/i.test(v.name) ? 1 : 0;
+  const bestVoice = () => {
+    const list = viVoices();
+    return list.find(v => v.name === S.voice.name) || list.slice().sort((a, b) => voiceScore(b) - voiceScore(a))[0];
+  };
+  function say(text, force) {
+    if ((!S.sound && !force) || !('speechSynthesis' in window)) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'vi-VN'; u.rate = S.voice.rate; u.pitch = S.voice.pitch;
+      const v = bestVoice();
+      if (v) u.voice = v;
+      speechSynthesis.speak(u);
+    } catch {}
+  }
+  const PRAISE = ['Giỏi quá con ơi!', 'Con làm tốt lắm!', 'Ngoan quá!', 'Tuyệt vời lắm con!', 'Con giỏi lắm!'];
+
+  /* ---------- Hiệu ứng ---------- */
+  function party(n = 40, set = ['⭐', '🌟', '✨', '🎉', '💛']) {
+    const box = $('party');
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement('span');
+      s.textContent = set[i % set.length];
+      s.style.left = Math.random() * 100 + 'vw';
+      s.style.fontSize = 20 + Math.random() * 26 + 'px';
+      s.style.animationDuration = 1.8 + Math.random() * 1.8 + 's';
+      s.style.animationDelay = Math.random() * .5 + 's';
+      box.appendChild(s);
+      setTimeout(() => s.remove(), 4500);
+    }
+  }
+  function flyStar(fromEl, count) {
+    const a = fromEl.getBoundingClientRect(), b = $('bigstar').getBoundingClientRect();
+    for (let i = 0; i < count; i++) {
+      const s = document.createElement('div');
+      s.className = 'fly'; s.textContent = '⭐';
+      const x0 = a.left + a.width / 2 - 24, y0 = a.top + a.height / 2 - 24;
+      const x1 = b.left + b.width / 2 - 24, y1 = b.top + b.height / 2 - 24;
+      s.style.left = x0 + 'px'; s.style.top = y0 + 'px';
+      document.body.appendChild(s);
+      const anim = s.animate([
+        { transform: 'translate(0,0) scale(.6)', opacity: 1 },
+        { transform: `translate(${(x1 - x0) / 2}px, ${(y1 - y0) / 2 - 80}px) scale(1.6) rotate(180deg)`, offset: .5 },
+        { transform: `translate(${x1 - x0}px, ${y1 - y0}px) scale(.8) rotate(360deg)`, opacity: .9 },
+      ], { duration: 900, delay: i * 150, easing: 'ease-in-out', fill: 'both' });
+      anim.onfinish = () => {
+        s.remove();
+        const bs = $('bigstar'); bs.classList.remove('pop'); void bs.offsetWidth; bs.classList.add('pop');
+        chime([1046 + i * 120], 0);
+      };
+    }
+  }
+  function cheer(emoji, title, sub) {
+    $('cheerE').textContent = emoji; $('cheerT').textContent = title; $('cheerS').textContent = sub;
+    $('cheer').classList.add('open');
+    party(70);
+    chime([523, 659, 784, 1046, 1318], .12);
+    say(title + '. ' + sub);
+  }
+  $('cheerOk').onclick = () => $('cheer').classList.remove('open');
+
+  /* ---------- Màn hình chính ---------- */
+  function render() {
+    const k = kid(), st = starsOf(k.id);
+    $('kids').innerHTML = kids().map(x => `
+      <button class="kid ${x.id === S.current ? 'on' : ''}" data-kid="${x.id}">
+        <span class="av">${x.avatar}</span><span class="nm">${esc(x.name)}</span>
+      </button>`).join('');
+    $('count').textContent = st;
+    const g = myRewards().filter(r => r.cost > st).sort((a, b) => a.cost - b.cost)[0];
+    const ready = myRewards().filter(r => r.cost <= st).length;
+    if (g) {
+      $('goal').textContent = `Còn ${g.cost - st} sao nữa để được ${g.icon} ${g.name}` + (ready ? ` · ${ready} quà đổi được rồi!` : '');
+      $('bar').style.width = Math.min(100, st / g.cost * 100) + '%';
+    } else {
+      $('goal').textContent = myRewards().length ? 'Bé đủ sao đổi mọi phần quà! 🎉' : 'Bố mẹ hãy thêm phần quà nhé';
+      $('bar').style.width = '100%';
+    }
+    const done = doneToday(), mine = myTasks();
+    $('today').textContent = `${mine.filter(t => done.includes(t.id)).length}/${mine.length}`;
+    $('tasks').innerHTML = mine.length ? mine.map(t => `
+      <button class="task ${done.includes(t.id) ? 'done' : ''}" data-task="${t.id}">
+        <span class="ic">${t.icon}</span><span class="tn">${esc(t.name)}</span><span class="ts">${stars(t.value)}</span>
+      </button>`).join('') : '<div class="empty">Chưa có việc nào. Bố mẹ vào "Bố mẹ" để thêm nhé.</div>';
+    $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
+    syncBadge();
+  }
+
+  $('kids').onclick = e => {
+    const b = e.target.closest('[data-kid]'); if (!b) return;
+    S.current = b.dataset.kid; save(); render(); chime([784], 0);
+    say(kid().name);
+  };
+
+  $('tasks').onclick = e => {
+    const b = e.target.closest('[data-task]'); if (!b) return;
+    const t = tasks().find(x => x.id === b.dataset.task), k = kid();
+    if (!t) return;
+    if (doneToday().includes(t.id)) {
+      // Đã làm rồi: lắc nhẹ, nhắc nhở; bố mẹ có thể bỏ đánh dấu trong khu bố mẹ
+      b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
+      say(`${t.name}, con làm xong rồi mà.`);
+      return;
+    }
+    const before = starsOf(k.id);
+    addEvent(k.id, t.value, `${t.icon} ${t.name}`, { type: 'task', task: t.id, day: dayKey() });
+    save();
+    const now = starsOf(k.id);
+    flyStar(b, Math.min(t.value, 5));
+    chime();
+    setTimeout(render, 950);
+    b.classList.add('done');
+
+    const praise = PRAISE[Math.floor(Math.random() * PRAISE.length)];
+    // Mốc ăn mừng lớn
+    const done = doneToday();
+    const allDone = myTasks().every(x => done.includes(x.id));
+    const milestone = Math.floor(now / 10) > Math.floor(before / 10);
+    const newReward = myRewards().find(r => before < r.cost && now >= r.cost);
+    if (allDone) setTimeout(() => cheer('🏆', `${k.name} làm hết việc hôm nay!`, `Được ${now} ngôi sao rồi`), 1100);
+    else if (newReward) setTimeout(() => cheer(newReward.icon, 'Đủ sao đổi quà rồi!', `${newReward.name}`), 1100);
+    else if (milestone) setTimeout(() => cheer('🌟', `${Math.floor(now / 10) * 10} ngôi sao!`, `${k.name} giỏi quá`), 1100);
+    else { party(18); say(`${praise} ${t.name}, con được thêm ${t.value} ngôi sao nhé.`); }
+  };
+
+  $('soundBtn').onclick = () => { S.sound = !S.sound; save(); render(); chime([880], 0); };
+
+  /* ---------- Bảng phủ ---------- */
+  const open = id => $(id).classList.add('open');
+  const close = id => $(id).classList.remove('open');
+  document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('.sheet').classList.remove('open'));
+  document.querySelectorAll('.sheet').forEach(s => s.addEventListener('click', e => { if (e.target === s) s.classList.remove('open'); }));
+
+  /* ---------- Cổng phụ huynh: mã PIN 4 số (bé lớn cũng không tự vào được) ---------- */
+  // mode: 'pin' nhập mã · 'new1'/'new2' tạo mã mới · 'forgot' giải phép nhân khó để đặt lại mã
+  const G = { mode: 'pin', input: '', then: null, ans: 0, first: '' };
+  function gateShow(q) {
+    $('gateQ').textContent = q;
+    $('gateA').textContent = G.mode === 'forgot' ? G.input : '●'.repeat(G.input.length) + '○'.repeat(4 - G.input.length);
+    $('forgot').style.display = G.mode === 'pin' ? '' : 'none';
+  }
+  const GATE_Q = { pin: 'Nhập mã PIN', new1: 'Tạo mã PIN 4 số', new2: 'Nhập lại mã PIN' };
+  function gate(why, then, mode) {
+    G.mode = mode || (S.shared.pin ? 'pin' : 'new1'); G.input = ''; G.then = then;
+    $('gateWhy').textContent = G.mode === 'new1' && !S.shared.pin ? 'Lần đầu: bố mẹ tạo mã PIN riêng, đừng cho bé biết nhé' : why;
+    gateShow(GATE_Q[G.mode]);
+    open('gateSheet');
+  }
+  function gateFail() {
+    G.input = ''; const p = $('gateA'); p.textContent = '✗';
+    p.style.animation = 'wiggle .4s'; setTimeout(() => { p.style.animation = ''; gateShow($('gateQ').textContent); }, 500);
+  }
+  function gatePass() { close('gateSheet'); const f = G.then; G.then = null; f && f(); }
+  function gateSubmit() {
+    if (G.mode === 'pin') { if (G.input === S.shared.pin) gatePass(); else gateFail(); }
+    else if (G.mode === 'new1') { G.first = G.input; G.mode = 'new2'; G.input = ''; gateShow(GATE_Q.new2); }
+    else if (G.mode === 'new2') {
+      if (G.input === G.first) { S.shared.pin = G.input; touch(S.shared); save(); gatePass(); }
+      else { G.mode = 'new1'; $('gateWhy').textContent = 'Hai lần nhập không khớp, nhập lại nhé'; G.input = ''; gateShow(GATE_Q.new1); }
+    } else if (G.mode === 'forgot') {
+      if (+G.input === G.ans) { G.mode = 'new1'; G.input = ''; $('gateWhy').textContent = 'Đúng rồi! Tạo mã PIN mới'; gateShow(GATE_Q.new1); }
+      else gateFail();
+    }
+  }
+  $('pad').innerHTML = [1, 2, 3, 4, 5, 6, 7, 8, 9, '⌫', 0, '✓'].map(n => `<button data-n="${n}">${n}</button>`).join('');
+  $('pad').onclick = e => {
+    const b = e.target.closest('[data-n]'); if (!b) return;
+    const n = b.dataset.n, isPin = G.mode !== 'forgot';
+    if (n === '⌫') G.input = G.input.slice(0, -1);
+    else if (n === '✓') { if (G.input) gateSubmit(); return; }
+    else if (G.input.length < (isPin ? 4 : 5)) G.input += n;
+    gateShow($('gateQ').textContent);
+    if (isPin && G.input.length === 4) setTimeout(gateSubmit, 150);
+  };
+  $('forgot').onclick = () => {
+    const a = 23 + Math.floor(Math.random() * 70), b = 13 + Math.floor(Math.random() * 80);
+    G.mode = 'forgot'; G.ans = a * b; G.input = '';
+    $('gateWhy').textContent = 'Quên mã? Giải phép nhân này để đặt mã mới';
+    gateShow(`${a} × ${b} = ?`);
+  };
+
+  /* ---------- Đổi quà ---------- */
+  function renderRewards() {
+    const st = starsOf(S.current);
+    $('rewards').innerHTML = myRewards().length ? myRewards().sort((a, b) => a.cost - b.cost).map(r => `
+      <button class="task reward ${r.cost <= st ? 'ready' : 'locked'}" data-reward="${r.id}">
+        <span class="ic">${r.icon}</span><span class="tn">${esc(r.name)}</span>
+        <span class="cost">⭐ ${r.cost}</span>
+      </button>`).join('') : '<div class="empty">Chưa có phần quà. Bố mẹ thêm trong khu bố mẹ nhé.</div>';
+  }
+  $('rewardBtn').onclick = () => { renderRewards(); open('rewardSheet'); say('Con muốn đổi quà gì nào?'); };
+  $('rewards').onclick = e => {
+    const b = e.target.closest('[data-reward]'); if (!b) return;
+    const r = rewards().find(x => x.id === b.dataset.reward), k = kid(), st = starsOf(k.id);
+    if (!r) return;
+    if (r.cost > st) {
+      b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
+      say(`Con cố thêm ${r.cost - st} ngôi sao nữa nhé.`);
+      return;
+    }
+    gate(`Xác nhận đổi ${r.icon} ${r.name} (−${r.cost} sao) cho ${k.name}`, () => {
+      if (starsOf(k.id) < r.cost) return;
+      addEvent(k.id, -r.cost, `🎁 Đổi quà: ${r.icon} ${r.name}`, { type: 'reward' }); save();
+      close('rewardSheet'); render();
+      cheer(r.icon, `${k.name} đổi quà thành công!`, r.name);
+    });
+  };
+
+  /* ---------- Khu bố mẹ ---------- */
+  let tab = 'kids', editing = null, pick = null;
+  $('parentBtn').onclick = () => gate('Nhập mã PIN để vào khu bố mẹ', () => { tab = 'kids'; editing = null; renderParent(); open('parentSheet'); sync(); });
+  $('ptabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; editing = null; renderParent(); };
+
+  const emojiPicker = (list, cur) => `<div class="emojis">${list.map(x => `<button type="button" data-emo="${x}" class="${x === cur ? 'on' : ''}">${x}</button>`).join('')}</div>`;
+
+  function formHTML(kind, item) {
+    const isKid = kind === 'kids', isTask = kind === 'tasks';
+    const list = isKid ? KID_EMOJI : isTask ? TASK_EMOJI : REWARD_EMOJI;
+    pick = item ? (item.avatar || item.icon) : isKid ? (list.find(e => !kids().some(k => k.avatar === e)) || list[0]) : list[0];
+    const numLabel = isKid ? null : isTask ? 'Số sao được thưởng' : 'Số sao cần để đổi';
+    const num = item ? (isTask ? item.value : item.cost) : (isTask ? 1 : 10);
+    return `<form class="form" id="pform">
+      <label>${isKid ? 'Tên bé' : isTask ? 'Tên việc' : 'Tên phần quà'}<input type="text" id="fname" maxlength="40" required value="${item ? esc(item.name) : ''}"></label>
+      <div class="fl">${isKid ? 'Hình đại diện' : 'Biểu tượng'}${emojiPicker(list, pick)}</div>
+      ${numLabel ? `<label>${numLabel}<input type="number" id="fnum" min="1" max="${isTask ? 10 : 999}" value="${num}" required></label>` : ''}
+      ${isKid ? `<div class="fl">Độ tuổi<span class="chips">${[['nho', '🧒 Bé nhỏ (3–6 tuổi)'], ['lon', '🧑 Bé lớn (7 tuổi trở lên)']].map(([v, t]) =>
+        `<label class="chip"><input type="radio" name="fage" value="${v}" ${(item ? item.age : 'nho') === v ? 'checked' : ''}>${t}</label>`).join('')}</span>
+        ${item ? '' : '<small>Bé mới tự có sẵn việc và quà hợp với độ tuổi, bố mẹ sửa lại tuỳ ý.</small>'}</div>` : `<div class="fl">Dành cho bé<span class="chips">${kids().map(k =>
+        `<label class="chip"><input type="checkbox" name="fkid" value="${k.id}" ${(item ? item.kidIds : [S.current]).includes(k.id) ? 'checked' : ''}>${k.avatar} ${esc(k.name)}</label>`).join('')}</span></div>`}
+      <div style="display:flex;gap:8px"><button class="sbtn green" type="submit">${item ? 'Lưu' : 'Thêm'}</button><button class="sbtn" type="button" id="fcancel">Huỷ</button></div>
+    </form>`;
+  }
+
+  const timeText = t => { const d = new Date(t); return `${d.toLocaleDateString('vi-VN')} ${d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`; };
+
+  function renderParent() {
+    document.querySelectorAll('#ptabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    const body = $('pbody');
+    const addBtn = label => editing === 'new' ? formHTML(tab, null) : `<button class="sbtn green" data-act="new" style="margin-bottom:12px">＋ ${label}</button>`;
+    const forWho = it => { const ks = kids().filter(k => it.kidIds.includes(k.id)); return ks.length ? ks.map(k => `${k.avatar} ${esc(k.name)}`).join(', ') : '⚠️ chưa chọn bé'; };
+    const formFor = (it, html) => editing === it.id ? formHTML(tab, it) : html;
+
+    if (tab === 'kids') {
+      body.innerHTML = addBtn('Thêm bé') + kids().map(k => formFor(k, `
+        <div class="row"><span class="e">${k.avatar}</span>
+          <span class="t">${esc(k.name)}<small>${k.age === 'lon' ? 'Bé lớn' : 'Bé nhỏ'} · ⭐ ${starsOf(k.id)} sao · hôm nay xong ${myTasks(k.id).filter(t => doneToday(k.id).includes(t.id)).length}/${myTasks(k.id).length} việc</small></span>
+          <button class="sbtn" data-act="minus" data-id="${k.id}">−1 ⭐</button>
+          <button class="sbtn" data-act="plus" data-id="${k.id}">+1 ⭐</button>
+          <button class="sbtn" data-act="edit" data-id="${k.id}">✏️</button>
+          ${kids().length > 1 ? `<button class="sbtn red" data-act="del" data-id="${k.id}">🗑</button>` : ''}
+        </div>`)).join('') + `<p class="note">Dùng +1/−1 để thưởng thêm hoặc sửa khi bấm nhầm. Muốn bỏ đánh dấu một việc hôm nay, vào tab "Việc làm".</p>
+        <button class="sbtn" data-act="pin">🔑 Đổi mã PIN bố mẹ</button>`;
+    } else if (tab === 'tasks') {
+      const done = doneToday();
+      body.innerHTML = `<p class="note">Việc được đánh dấu lại từ đầu mỗi ngày. Xem việc đã xong hôm nay của:</p>
+        <div class="chips" style="margin-bottom:12px">${kids().map(k => `<button class="chip ${k.id === S.current ? 'on' : ''}" data-act="see" data-id="${k.id}">${k.avatar} ${esc(k.name)}</button>`).join('')}</div>` +
+        addBtn('Thêm việc') + tasks().map((t, i) => formFor(t, `
+        <div class="row"><span class="e">${t.icon}</span>
+          <span class="t">${esc(t.name)}<small>${stars(t.value)} · ${forWho(t)}${done.includes(t.id) ? ' · ✅ xong hôm nay' : ''}</small></span>
+          ${done.includes(t.id) ? `<button class="sbtn" data-act="undo" data-id="${t.id}">↩︎ Bỏ đánh dấu</button>` : ''}
+          <button class="sbtn" data-act="up" data-id="${t.id}" ${i ? '' : 'disabled style="opacity:.3"'}>▲</button>
+          <button class="sbtn" data-act="edit" data-id="${t.id}">✏️</button>
+          <button class="sbtn red" data-act="del" data-id="${t.id}">🗑</button>
+        </div>`)).join('');
+    } else if (tab === 'rewards') {
+      body.innerHTML = addBtn('Thêm phần quà') + rewards().map(r => formFor(r, `
+        <div class="row"><span class="e">${r.icon}</span>
+          <span class="t">${esc(r.name)}<small>⭐ ${r.cost} sao · ${forWho(r)}</small></span>
+          <button class="sbtn" data-act="edit" data-id="${r.id}">✏️</button>
+          <button class="sbtn red" data-act="del" data-id="${r.id}">🗑</button>
+        </div>`)).join('');
+    } else if (tab === 'voice') {
+      const list = viVoices(), cur = bestVoice();
+      body.innerHTML = `<div class="form">
+        <div class="fl">Chọn giọng${list.length ? `<span class="chips">${list.map(v => `<button class="chip ${cur && v.name === cur.name ? 'on' : ''}" data-act="voice" data-id="${esc(v.name)}">${esc(v.name)}${voiceScore(v) ? ' ✨' : ''}</button>`).join('')}</span>`
+          : '<small>Máy này chưa có giọng tiếng Việt. Xem hướng dẫn bên dưới.</small>'}</div>
+        <label>Tốc độ đọc: <b id="vrateT"></b><input type="range" id="vrate" min="0.6" max="1.2" step="0.05" value="${S.voice.rate}"></label>
+        <label>Độ cao giọng: <b id="vpitchT"></b><input type="range" id="vpitch" min="0.8" max="1.4" step="0.05" value="${S.voice.pitch}"></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="sbtn green" data-act="vtest">▶︎ Nghe thử</button><button class="sbtn" data-act="vreset">Về mặc định (dịu dàng)</button></div>
+      </div>
+      <p class="note"><b>Muốn giọng tự nhiên hơn?</b> Giọng có dấu ✨ là giọng chất lượng cao. Giọng phụ thuộc vào máy, tải thêm như sau:</p>
+      <p class="note">• <b>iPad / iPhone:</b> Cài đặt → Trợ năng → Nội dung được đọc → Giọng nói → Tiếng Việt → tải <b>Linh (Nâng cao)</b>.<br>
+      • <b>Mac:</b> Cài đặt hệ thống → Trợ năng → Nội dung được đọc → Giọng hệ thống → Quản lý giọng → Tiếng Việt → tải <b>Linh (Nâng cao)</b>.<br>
+      • <b>Máy Windows:</b> mở app bằng trình duyệt <b>Microsoft Edge</b> để có giọng <b>HoaiMy (Natural)</b>, rất tự nhiên (cần có mạng).<br>
+      Tải xong thì tắt hẳn rồi mở lại trình duyệt, giọng mới sẽ hiện ở đây.</p>`;
+      const show = () => { $('vrateT').textContent = S.voice.rate <= .8 ? 'chậm' : S.voice.rate >= 1.05 ? 'nhanh' : 'vừa';
+        $('vpitchT').textContent = S.voice.pitch <= .95 ? 'trầm' : S.voice.pitch >= 1.2 ? 'cao' : 'vừa'; };
+      show();
+      $('vrate').oninput = e => { S.voice.rate = +e.target.value; show(); save(); };
+      $('vpitch').oninput = e => { S.voice.pitch = +e.target.value; show(); save(); };
+      ['vrate', 'vpitch'].forEach(id => $(id).onchange = () => say('Giỏi quá con ơi!', true));
+    } else if (tab === 'sync') {
+      const pending = S.out.ev.length + S.out.it.length;
+      body.innerHTML = S.sync.url ? `<div class="form">
+          <div><b>☁️ Đang đồng bộ với Google Trang tính của gia đình</b></div>
+          <small>${syncing ? '🔄 Đang đồng bộ…' : S.sync.err ? `⚠️ ${esc(S.sync.err)}` : S.sync.last ? `✅ Lần đồng bộ gần nhất: ${timeText(S.sync.last)}` : ''}${pending ? ` · còn ${pending} thay đổi chờ gửi` : ''}</small>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="sbtn green" data-act="syncnow">🔄 Đồng bộ ngay</button>
+            <button class="sbtn" data-act="sharecode">📤 Gửi mã cho máy khác</button>
+            <button class="sbtn red" data-act="unlink">Ngắt đồng bộ trên máy này</button>
+          </div>
+        </div>
+        <p class="note">Máy khác (iPad, điện thoại của bố/mẹ…): mở app → Bố mẹ → Đồng bộ → dán mã này vào. Không cần đăng nhập Google, nhưng <b>chỉ gửi mã cho người trong nhà</b>: ai có mã đều xem và sửa được sao của các bé.</p>
+        <p class="note">Xem dữ liệu: mở Google Trang tính "Sao Cho Bé" trong Google Drive của bạn — trang "Sổ sao" ghi lại mọi lần nhận/đổi sao.</p>`
+        : `<p class="note">Đồng bộ giúp iPad, điện thoại của bố, của mẹ… cùng thấy một số sao. Dữ liệu được lưu trong Google Trang tính <b>của chính bạn</b>, miễn phí. Chỉ cần làm một lần trên máy tính (khoảng 5 phút):</p>
+        <ol class="steps">
+          <li>Trên máy tính, mở <b>sheets.new</b> (tạo Google Trang tính mới), đặt tên <b>Sao Cho Bé</b>.</li>
+          <li>Chọn menu <b>Tiện ích mở rộng → Apps Script</b>.</li>
+          <li>Xoá hết chữ có sẵn, dán đoạn mã của app vào (bấm nút <b>📋 Sao chép đoạn mã</b> bên dưới), rồi bấm 💾 <b>Lưu</b>.</li>
+          <li>Bấm <b>Triển khai → Tùy chọn triển khai mới</b>. Bấm bánh răng ⚙️, chọn <b>Ứng dụng web</b>.<br>
+            Thực thi với tư cách: <b>Tôi</b> · Người có quyền truy cập: <b>Bất kỳ ai</b> → bấm <b>Triển khai</b>.</li>
+          <li>Google hỏi quyền: chọn tài khoản của bạn → <b>Nâng cao</b> → <b>Đi tới … (không an toàn)</b> → <b>Cho phép</b>.<br>
+            <small>Cảnh báo này hiện ra vì đoạn mã do bạn tự thêm, chưa qua Google duyệt. Đoạn mã chỉ đọc/ghi Trang tính này.</small></li>
+          <li>Sao chép <b>URL ứng dụng web</b> (dạng https://script.google.com/macros/s/…/exec), dán vào ô dưới và bấm <b>Kết nối</b>.</li>
+        </ol>
+        <div class="form">
+          <button class="sbtn" data-act="copygs">📋 Sao chép đoạn mã</button>
+          <label>Mã đồng bộ (URL ứng dụng web)<input type="text" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+          <div style="display:flex;gap:8px;align-items:center"><button class="sbtn green" data-act="connect">Kết nối</button><small id="syncMsg"></small></div>
+        </div>
+        <p class="note">Máy thứ hai trở đi chỉ cần làm bước cuối: dán cùng mã đồng bộ (máy đầu tiên có nút "Gửi mã cho máy khác").</p>`;
+    } else {
+      const names = Object.fromEntries(S.kids.map(k => [k.id, `${k.avatar} ${esc(k.name)}`]));
+      // Tổng sao 7 ngày gần nhất theo từng bé
+      const week = Date.now() - 7 * 864e5, u = undone(), dup = duplicates();
+      const sum = {};
+      S.events.filter(e => e.t >= week && e.d > 0 && !u.has(e.id) && !dup.has(e.id)).forEach(e => sum[e.kid] = (sum[e.kid] || 0) + e.d);
+      const log = S.events.slice().sort((a, b) => b.t - a.t).slice(0, 150);
+      body.innerHTML = `<p class="note">7 ngày qua: ${kids().map(k => `${k.avatar} ${esc(k.name)} được <b>${sum[k.id] || 0}</b> sao`).join(' · ')}</p>
+        <div class="hist">${log.length ? log.map(e => `<div class="row" ${dup.has(e.id) ? 'style="opacity:.5"' : ''}><span class="t">${esc(e.text)}${dup.has(e.id) ? ' <small style="display:inline">(bấm trùng trên máy khác, không tính)</small>' : ''}<small>${names[e.kid] || esc(e.kn || '—')} · ${timeText(e.t)}</small></span>
+            <span class="${e.d > 0 ? 'plus' : 'minus'}">${e.d > 0 ? '+' : ''}${e.d} ⭐</span></div>`).join('') : '<div class="empty">Chưa có gì.</div>'}</div>
+        <p class="note" style="margin-top:16px"><b>Sao lưu:</b> lưu toàn bộ sao, việc, quà ra một file (gửi qua Zalo/AirDrop hoặc lưu vào Tệp) để phòng khi xoá app.${S.sync.url ? ' Máy đang đồng bộ nên dữ liệu đã nằm an toàn trong Google Trang tính.' : ''}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="sbtn green" data-act="backup">💾 Sao lưu ra file</button>
+          ${S.sync.url ? '' : '<label class="sbtn" style="display:inline-flex;align-items:center">📂 Khôi phục từ file<input type="file" id="restore" accept=".json,application/json" hidden></label>'}
+          <button class="sbtn red" data-act="reset">${S.sync.url ? 'Xoá dữ liệu trên máy này' : 'Xoá toàn bộ dữ liệu'}</button>
+        </div>`;
+      if ($('restore')) $('restore').onchange = async e => {
+        const file = e.target.files[0]; if (!file) return;
+        try {
+          const d = JSON.parse(await file.text());
+          if (!Array.isArray(d.kids) || !Array.isArray(d.tasks) || !Array.isArray(d.rewards)) throw 0;
+          const st = d.events ? Object.assign(blank(), { kids: d.kids, tasks: d.tasks, rewards: d.rewards, events: d.events, shared: d.shared || blank().shared }) : fromV1(d);
+          if (!confirm(`Khôi phục dữ liệu của ${live(st.kids).map(k => k.name).join(', ')}? Dữ liệu hiện tại trên máy này sẽ bị thay thế.`)) return;
+          Object.assign(st, { sound: S.sound, voice: S.voice });
+          S = st; fixCurrent(); save(); render(); renderParent();
+        } catch { alert('File không đúng, hãy chọn file sao lưu của Sao Cho Bé.'); }
+      };
+    }
+
+    const f = $('pform');
+    if (f) {
+      $('fname').focus();
+      f.querySelector('.emojis').onclick = e => {
+        const b = e.target.closest('[data-emo]'); if (!b) return;
+        pick = b.dataset.emo; f.querySelectorAll('[data-emo]').forEach(x => x.classList.toggle('on', x === b));
+      };
+      $('fcancel').onclick = () => { editing = null; renderParent(); };
+      f.onsubmit = e => {
+        e.preventDefault();
+        const name = $('fname').value.trim(); if (!name) return;
+        const num = $('fnum') ? Math.max(1, parseInt($('fnum').value, 10) || 1) : 0;
+        let it = editing === 'new' ? null : S[tab].find(x => x.id === editing);
+        if (tab === 'kids') {
+          const age = f.querySelector('[name=fage]:checked').value;
+          if (it) { Object.assign(it, { name, avatar: pick, age }); touch(it); }
+          else S.current = addKid({ name, avatar: pick, age }).id;
+          editing = null; save(); renderParent(); render(); return;
+        }
+        const kidIds = [...f.querySelectorAll('[name=fkid]:checked')].map(x => x.value);
+        if (!kidIds.length) { alert('Chọn ít nhất một bé nhé'); return; }
+        if (!it) {
+          it = { id: uid(), k: tab === 'tasks' ? 'task' : 'reward' };
+          if (tab === 'tasks') it.o = tasks().reduce((m, t) => Math.max(m, t.o), -1) + 1;
+          S[tab].push(it);
+        }
+        Object.assign(it, { name, icon: pick, kidIds });
+        if (tab === 'tasks') it.value = Math.min(10, num);
+        if (tab === 'rewards') it.cost = num;
+        touch(it);
+        editing = null; save(); renderParent(); render();
+      };
+    }
+  }
+
+  $('pbody').onclick = async e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const act = b.dataset.act, id = b.dataset.id;
+    if (act === 'new') editing = 'new';
+    else if (act === 'edit') editing = id;
+    else if (act === 'see') S.current = id;
+    else if (act === 'voice') { S.voice.name = id; say(`Chào ${kid().name}, con làm tốt lắm.`, true); }
+    else if (act === 'vtest') { say(`Giỏi quá con ơi! ${kid().name} được thêm một ngôi sao nhé.`, true); return; }
+    else if (act === 'vreset') { S.voice = { name: '', rate: .85, pitch: 1.05 }; say('Giỏi quá con ơi!', true); }
+    else if (act === 'pin') {
+      close('parentSheet');
+      gate('', () => { renderParent(); open('parentSheet'); alert('Đã đổi mã PIN'); }, 'new1');
+      $('gateWhy').textContent = 'Nhập mã PIN mới';
+      return;
+    }
+    else if (act === 'plus' || act === 'minus') {
+      const d = act === 'plus' ? 1 : -1;
+      if (starsOf(id) + d < 0) return;
+      addEvent(id, d, d > 0 ? '🎖 Bố mẹ thưởng thêm' : '✏️ Bố mẹ điều chỉnh', { type: 'adjust' });
+    } else if (act === 'del') {
+      const it = S[tab].find(x => x.id === id);
+      if (!confirm(`Xoá "${it.name}"?`)) return;
+      it.del = true; touch(it);
+      if (tab === 'kids') {
+        [...tasks(), ...rewards()].filter(x => x.kidIds.includes(id)).forEach(x => { x.kidIds = x.kidIds.filter(k => k !== id); touch(x); });
+        fixCurrent();
+      }
+    } else if (act === 'up') {
+      const list = tasks(), i = list.findIndex(x => x.id === id);
+      if (i > 0) {
+        const a = list[i - 1], c = list[i];
+        if (a.o === c.o) c.o = a.o - 1; else [a.o, c.o] = [c.o, a.o];
+        touch(a); touch(c);
+      }
+    } else if (act === 'undo') {
+      const ev = todayDone().find(x => x.task === id), t = tasks().find(x => x.id === id);
+      if (!ev) return;
+      addEvent(S.current, -ev.d, `↩︎ Bỏ đánh dấu: ${t ? `${t.icon} ${t.name}` : ev.text}`, { type: 'undo', ref: ev.id });
+    } else if (act === 'backup') {
+      const name = `sao-cho-be-${dayKey()}.json`;
+      const { kids: k, tasks: t, rewards: r, events: ev, shared } = S;
+      const file = new File([JSON.stringify({ app: 'sao-cho-be', v: 2, kids: k, tasks: t, rewards: r, events: ev, shared })], name, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: 'Sao lưu Sao Cho Bé' }).catch(() => {});
+      else { const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+      return;
+    } else if (act === 'reset') {
+      if (S.sync.url) {
+        if (!confirm('Ngắt đồng bộ và xoá dữ liệu trên máy này?\nDữ liệu chung trong Google Trang tính vẫn được giữ nguyên.')) return;
+      } else if (!confirm('Xoá hết các bé, việc làm, phần quà và lịch sử? Không thể hoàn tác.')) return;
+      const keep = { sound: S.sound, voice: S.voice, shared: S.sync.url ? blank().shared : S.shared };
+      S = Object.assign(blank(), keep); fixCurrent();
+    } else if (act === 'copygs') {
+      const code = $('gsCode').textContent.trim();
+      try { await navigator.clipboard.writeText(code); b.textContent = '✅ Đã sao chép — dán vào Apps Script'; }
+      catch { prompt('Sao chép đoạn mã này:', code); }
+      return;
+    } else if (act === 'connect') { connect($('syncUrl').value); return; }
+    else if (act === 'syncnow') { sync(); renderParent(); return; }
+    else if (act === 'sharecode') {
+      const text = S.sync.url;
+      if (navigator.share) navigator.share({ title: 'Mã đồng bộ Sao Cho Bé', text }).catch(() => {});
+      else { try { await navigator.clipboard.writeText(text); alert('Đã sao chép mã đồng bộ'); } catch { prompt('Mã đồng bộ:', text); } }
+      return;
+    } else if (act === 'unlink') {
+      if (!confirm('Ngắt đồng bộ trên máy này? Máy này giữ dữ liệu hiện có nhưng sẽ không cập nhật với máy khác nữa.')) return;
+      S.sync = { url: '', cursor: 0, last: 0, err: '' }; S.out = { ev: [], it: [] };
+    }
+    save(); renderParent(); render();
+  };
+
+  // Qua ngày mới khi app vẫn mở → vẽ lại; mở lại app → đồng bộ
+  let lastDay = dayKey();
+  setInterval(() => { if (dayKey() !== lastDay) { lastDay = dayKey(); render(); } }, 60e3);
+  setInterval(() => { if (!document.hidden) sync(); }, 20e3);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { render(); sync(); } });
+  addEventListener('online', () => sync());
+  if ('speechSynthesis' in window) {
+    speechSynthesis.getVoices();
+    speechSynthesis.addEventListener?.('voiceschanged', () => { if (tab === 'voice' && $('parentSheet').classList.contains('open')) renderParent(); });
+  }
+
+  // Cài như app: chạy được khi mất mạng; nhắc cài lên màn hình chính trên iPhone/iPad
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  let hideInstall = false; try { hideInstall = !!localStorage.getItem('sao-cho-be-an-nhac-cai'); } catch {}
+  if (isIOS && !standalone && !hideInstall) $('install').hidden = false;
+  $('installX').onclick = () => { $('install').hidden = true; try { localStorage.setItem('sao-cho-be-an-nhac-cai', '1'); } catch {} };
+
+  fixCurrent();
+  save();
+  render();
+  sync();
+})();
+</script>
+</body>
+</html>
