@@ -3,7 +3,6 @@
   "short_name": "Sao Cho Bé",
   "description": "Bé làm việc tốt, tích sao đổi quà",
   "lang": "vi",
-  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

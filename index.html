@@ -527,22 +527,33 @@ function tra_(o) {
     if (changed) { render(); if ($('parentSheet').classList.contains('open') && !editing) renderParent(); }
     else if (tab === 'sync' && $('parentSheet').classList.contains('open')) renderParent();
   }
-  async function connect(url) {
-    url = url.trim();
-    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) {
-      alert('Mã đồng bộ phải là đường link dạng:\nhttps://script.google.com/macros/s/…/exec'); return;
-    }
-    $('syncMsg').textContent = 'Đang kết nối…';
+  // Link cài app kèm mã đồng bộ: mở link là tự kết nối, khỏi phải dán mã
+  const APP_URL = 'https://son612.github.io/sao-cho-be/';
+  const scriptId = url => (String(url).match(/macros\/s\/([\w-]{20,})\/exec/) || [])[1];
+  const inviteLink = () => `${APP_URL}#ma=${scriptId(S.sync.url)}`;
+  // Nhận cả 3 dạng: link Google (…/exec), link mời (…#ma=…), hoặc chỉ phần mã
+  function toScriptUrl(text) {
+    const t = String(text).trim();
+    const id = scriptId(t) || (t.match(/[#?&]ma=([\w-]{20,})/) || [])[1] || (t.match(/^[\w-]{20,}$/) || [])[0];
+    return id ? `https://script.google.com/macros/s/${id}/exec` : null;
+  }
+  const msg = t => { if ($('syncMsg')) $('syncMsg').textContent = t; };
+  async function connect(text, auto) {
+    const url = toScriptUrl(text);
+    if (!url) { alert('Mã đồng bộ không đúng. Hãy dán link bắt đầu bằng https://script.google.com/macros/s/… hoặc link mời từ máy khác.'); return; }
+    msg('Đang kết nối…');
     let res;
     try { res = await call(url, { cursor: 0, events: [], items: [] }); }
     catch {
-      $('syncMsg').textContent = '';
+      msg('');
       alert('Không kết nối được. Kiểm tra lại: đường link đúng, máy có mạng, và lúc triển khai đã chọn "Người có quyền truy cập: Bất kỳ ai".');
       return;
     }
     const remoteKids = (res.items || []).filter(x => x.k === 'kid' && !x.del);
+    // Máy mới cài (chưa ai tích sao trên máy này) thì không cần hỏi
+    const fresh = !S.events.length;
     if (remoteKids.length) {
-      if (!confirm(`Dữ liệu chung đã có: ${remoteKids.map(k => `${k.avatar} ${k.name}`).join(', ')}.\n\nMáy này sẽ dùng dữ liệu chung đó. Dữ liệu đang có riêng trên máy này sẽ được thay thế.`)) { $('syncMsg').textContent = ''; return; }
+      if (!(auto && fresh) && !confirm(`Dữ liệu chung đã có: ${remoteKids.map(k => `${k.avatar} ${k.name}`).join(', ')}.\n\nMáy này sẽ dùng dữ liệu chung đó. Dữ liệu đang có riêng trên máy này sẽ được thay thế.`)) { msg(''); return; }
       Object.assign(S, { kids: [], tasks: [], rewards: [], events: [], shared: blank().shared, out: { ev: [], it: [] } });
       merge(res);
       S.sync = { url, cursor: res.cursor, last: Date.now(), err: '' };
@@ -553,7 +564,16 @@ function tra_(o) {
     }
     save(); render();
     await sync();
-    renderParent();
+    if ($('parentSheet').classList.contains('open')) renderParent();
+    if (auto) { party(30); say('Đã kết nối với cả nhà!', true); }
+  }
+  // Mở app bằng link mời (…#ma=…): tự kết nối. Giữ nguyên link trên thanh địa chỉ để
+  // "Thêm vào MH chính" lưu luôn mã → app trên màn hình chính cũng tự kết nối lần đầu mở.
+  function joinFromLink() {
+    const url = toScriptUrl(location.hash);
+    if (!url || url === S.sync.url) return;
+    if (S.sync.url && !confirm('Link này dùng mã đồng bộ khác với mã máy đang dùng. Chuyển sang mã mới?')) return;
+    connect(url, true);
   }
   function syncBadge() {
     const b = $('syncBtn');
@@ -882,15 +902,16 @@ function tra_(o) {
           <small>${syncing ? '🔄 Đang đồng bộ…' : S.sync.err ? `⚠️ ${esc(S.sync.err)}` : S.sync.last ? `✅ Lần đồng bộ gần nhất: ${timeText(S.sync.last)}` : ''}${pending ? ` · còn ${pending} thay đổi chờ gửi` : ''}</small>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button class="sbtn green" data-act="syncnow">🔄 Đồng bộ ngay</button>
-            <button class="sbtn" data-act="sharecode">📤 Gửi mã cho máy khác</button>
+            <button class="sbtn" data-act="sharecode">📤 Gửi link cho máy khác</button>
             <button class="sbtn red" data-act="unlink">Ngắt đồng bộ trên máy này</button>
           </div>
         </div>
-        <p class="note">Máy khác (iPad, điện thoại của bố/mẹ…): mở app → Bố mẹ → Đồng bộ → dán mã này vào. Không cần đăng nhập Google, nhưng <b>chỉ gửi mã cho người trong nhà</b>: ai có mã đều xem và sửa được sao của các bé.</p>
+        <p class="note"><b>Thêm máy khác</b> (iPad, điện thoại của bố/mẹ…): bấm <b>📤 Gửi link cho máy khác</b>, gửi qua Zalo/tin nhắn/AirDrop. Trên máy kia chỉ cần bấm vào link (mở bằng <b>Safari</b>) → Chia sẻ → <b>Thêm vào MH chính</b>. App tự kết nối, không cần dán mã, không cần đăng nhập Google.</p>
+        <p class="note">⚠️ <b>Chỉ gửi link cho người trong nhà</b>: ai có link đều xem và sửa được sao của các bé.</p>
         <p class="note">Xem dữ liệu: mở Google Trang tính "Sao Cho Bé" trong Google Drive của bạn — trang "Sổ sao" ghi lại mọi lần nhận/đổi sao.</p>`
         : `<p class="note">Đồng bộ giúp iPad, điện thoại của bố, của mẹ… cùng thấy một số sao. Dữ liệu lưu trong Google Trang tính <b>của chính bạn</b>, miễn phí.</p>
         <div class="form">
-          <div><b>Đã có mã đồng bộ?</b> <small>Dán vào đây là xong. Lấy mã từ máy đã kết nối: Bố mẹ → Đồng bộ → "Gửi mã cho máy khác".</small></div>
+          <div><b>Đã có mã đồng bộ?</b> <small>Cách dễ nhất: trên máy đã kết nối bấm Bố mẹ → Đồng bộ → "Gửi link cho máy khác", rồi bấm vào link đó trên máy này. Hoặc dán mã vào đây.</small></div>
           <input type="url" id="syncUrl" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" autocapitalize="off" spellcheck="false">
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="sbtn" data-act="paste">📋 Dán</button><button class="sbtn green" data-act="connect">Kết nối</button><small id="syncMsg"></small></div>
         </div>
@@ -1036,9 +1057,10 @@ function tra_(o) {
     } else if (act === 'connect') { connect($('syncUrl').value); return; }
     else if (act === 'syncnow') { sync(); renderParent(); return; }
     else if (act === 'sharecode') {
-      const text = S.sync.url;
-      if (navigator.share) navigator.share({ title: 'Mã đồng bộ Sao Cho Bé', text }).catch(() => {});
-      else { try { await navigator.clipboard.writeText(text); alert('Đã sao chép mã đồng bộ'); } catch { prompt('Mã đồng bộ:', text); } }
+      const url = inviteLink();
+      const text = 'Mở link này bằng Safari để cài app Sao Cho Bé và tự kết nối với cả nhà:';
+      if (navigator.share) navigator.share({ title: 'Sao Cho Bé', text, url }).catch(() => {});
+      else { try { await navigator.clipboard.writeText(url); alert('Đã sao chép link mời. Gửi link này qua Zalo/tin nhắn sang máy kia.'); } catch { prompt('Link mời:', url); } }
       return;
     } else if (act === 'unlink') {
       if (!confirm('Ngắt đồng bộ trên máy này? Máy này giữ dữ liệu hiện có nhưng sẽ không cập nhật với máy khác nữa.')) return;
@@ -1070,6 +1092,8 @@ function tra_(o) {
   save();
   render();
   sync();
+  joinFromLink();
+  addEventListener('hashchange', joinFromLink);
 })();
 </script>
 </body>
