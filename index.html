@@ -455,7 +455,14 @@ function tra_(o) {
     }
     return dup;
   }
-  const starsOf = kidId => { const dup = duplicates(); return Math.max(0, S.events.reduce((s, e) => e.kid === kidId && !dup.has(e.id) ? s + e.d : s, 0)); };
+  // Số sao = cộng dồn sổ sao theo thời gian, không bao giờ xuống dưới 0: lúc bé đang 0 sao mà bị trừ
+  // (vd. bỏ đánh dấu việc sau khi đã đổi quà) thì phần trừ thừa bỏ qua, không thành "nợ" nuốt mất sao về sau.
+  const starsOf = kidId => {
+    const dup = duplicates();
+    return S.events.filter(e => e.kid === kidId && !dup.has(e.id))
+      .sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1))
+      .reduce((s, e) => Math.max(0, s + e.d), 0);
+  };
   // Các lần hoàn thành việc hôm nay (chưa bị bố mẹ bỏ đánh dấu)
   const todayDone = (kidId = S.current) => {
     const day = dayKey(), u = undone(), dup = duplicates();
