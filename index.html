@@ -95,6 +95,12 @@
     animation: pop .4s ease;
   }
   .task.wiggle { animation: wiggle .4s ease; }
+  .task.gone { transform: scale(.5); opacity: 0; transition: transform .3s ease-in, opacity .3s ease-in; pointer-events: none; }
+  .alldone { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
+    background: #eafaf0; border-radius: 26px; padding: 26px 16px; box-shadow: 0 6px 0 rgba(59,178,115,.25); animation: pop .5s ease; }
+  .alldone span { font-size: 64px; line-height: 1; }
+  .alldone b { font-size: 22px; }
+  .alldone small { color: var(--muted); font-weight: 700; font-size: 15px; }
 
   /* Thanh dưới */
   .dock {
@@ -779,10 +785,14 @@ function tra_(o) {
     }
     const done = doneToday(), mine = myTasks();
     $('today').textContent = `${mine.filter(t => done.includes(t.id)).length}/${mine.length}`;
-    $('tasks').innerHTML = mine.length ? mine.map(t => `
-      <button class="task ${done.includes(t.id) ? 'done' : ''}" data-task="${t.id}">
+    // Việc đã làm hôm nay ẩn khỏi màn hình, sang ngày mới tự hiện lại
+    const todo = mine.filter(t => !done.includes(t.id));
+    $('tasks').innerHTML = !mine.length ? '<div class="empty">Chưa có việc nào. Bố mẹ vào "Bố mẹ" để thêm nhé.</div>'
+      : !todo.length ? `<div class="alldone"><span>🎉</span><b>${esc(k.name)} đã làm xong hết việc hôm nay!</b><small>Ngày mai các việc sẽ hiện lại nhé.</small></div>`
+      : todo.map(t => `
+      <button class="task" data-task="${t.id}">
         <span class="ic">${t.icon}</span><span class="tn">${esc(t.name)}</span><span class="ts">${stars(t.value)}</span>
-      </button>`).join('') : '<div class="empty">Chưa có việc nào. Bố mẹ vào "Bố mẹ" để thêm nhé.</div>';
+      </button>`).join('');
     const cfg = streakCfg(), n = streakOf(k.id);
     $('streak').hidden = !cfg.on || !cfg.rules.length;
     if (!$('streak').hidden) {
@@ -819,8 +829,9 @@ function tra_(o) {
     const now = starsOf(k.id);
     flyStar(b, Math.min(t.value, 5));
     chime();
-    setTimeout(render, 950);
     b.classList.add('done');
+    setTimeout(() => b.classList.add('gone'), 650);   // thu nhỏ rồi biến mất
+    setTimeout(render, 1000);
 
     const praise = PRAISE[Math.floor(Math.random() * PRAISE.length)];
     // Mốc ăn mừng lớn
