@@ -162,8 +162,10 @@
   .chips.filter { margin: 2px 0 12px; position: sticky; top: -18px; z-index: 2; background: var(--bg); padding: 8px 0; }
   .chips.filter .chip { padding: 10px 14px; }
   .chips.filter small { opacity: .6; font-weight: 800; }
-  .streak { margin-top: 8px; font-weight: 800; font-size: 16px; color: #e5532d; }
-  .streak small { color: var(--muted); font-weight: 700; }
+  .hero { flex-wrap: wrap; }
+  .streak { flex-basis: 100%; margin-top: -4px; padding-top: 8px; border-top: 2px dashed var(--line); font-weight: 800; font-size: 13px; line-height: 1.3; color: #e5532d; }
+  .streak[hidden] { display: none; }
+  .streak small { color: var(--muted); font-weight: 700; font-size: 12px; }
   .emo-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
   .emo-tools input { width: 150px !important; padding: 8px 10px !important; font-size: 20px !important; }
   .emojis.rm button { position: relative; background: #ffe1e1; }
@@ -237,9 +239,9 @@
       <div class="count" id="count">0</div>
       <div class="sub" id="goal"></div>
       <div class="bar"><i id="bar" style="width:0"></i></div>
-      <div class="streak" id="streak" hidden></div>
     </div>
     <div class="today">Hôm nay<b id="today">0</b></div>
+    <div class="streak" id="streak" hidden></div>
   </section>
 
   <h2>🌞 Việc của bé hôm nay</h2>
@@ -774,8 +776,8 @@ function tra_(o) {
       // Mốc thưởng kế tiếp: ngày đủ việc tiếp theo là ngày thứ n + 1 của chuỗi
       const r = cfg.rules.filter(r => r.days > 0).map(r => ({ ...r, at: Math.ceil((n + 1) / r.days) * r.days })).sort((a, b) => a.at - b.at)[0];
       const left = r ? r.at - n : 0;
-      $('streak').innerHTML = (n ? `🔥 ${n} ngày liên tiếp` : '🔥 Làm đủ việc mỗi ngày để có chuỗi') +
-        (r ? ` <small>· thêm ${left} ngày nữa được +${r.stars} ⭐</small>` : '');
+      $('streak').innerHTML = (n ? `🔥 ${n} ngày liên tiếp` : '🔥 Làm đủ việc mỗi ngày') +
+        (r ? ` <small>· còn ${left} ngày nữa +${r.stars} ⭐</small>` : '');
     }
     $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
     syncBadge();
