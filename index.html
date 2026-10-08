@@ -163,6 +163,14 @@
   .chips.filter .chip { padding: 10px 14px; }
   .chips.filter small { opacity: .6; font-weight: 800; }
   .hero { flex-wrap: wrap; }
+  /* Số sao nằm đè giữa ngôi sao to */
+  .starbox { display: grid; place-items: center; flex: none; }
+  .starbox > * { grid-area: 1 / 1; }
+  .starbox .bigstar { font-size: 96px; }
+  .starbox .count { position: relative; z-index: 1; color: #7a3e00; font-size: 36px; padding-top: 10px; -webkit-text-stroke: 5px #fff8e0; paint-order: stroke fill; pointer-events: none; }
+  .starbox .count.n3 { font-size: 26px; }
+  .starbox .count.n4 { font-size: 20px; }
+  @media (max-width: 480px) { .starbox .bigstar { font-size: 80px; } .starbox .count { font-size: 32px; } .starbox .count.n3 { font-size: 24px; } }
   .streak { flex-basis: 100%; margin-top: -4px; padding-top: 8px; border-top: 2px dashed var(--line); font-weight: 800; font-size: 13px; line-height: 1.3; color: #e5532d; }
   .streak[hidden] { display: none; }
   .streak i { font-style: normal; }
@@ -236,9 +244,11 @@
   </header>
 
   <section class="hero">
-    <div class="bigstar" id="bigstar">⭐</div>
-    <div class="grow">
+    <div class="starbox">
+      <div class="bigstar" id="bigstar">⭐</div>
       <div class="count" id="count">0</div>
+    </div>
+    <div class="grow">
       <div class="sub" id="goal"></div>
       <div class="bar"><i id="bar" style="width:0"></i></div>
     </div>
@@ -757,6 +767,7 @@ function tra_(o) {
         <span class="av">${x.avatar}</span><span class="nm">${esc(x.name)}</span>
       </button>`).join('');
     $('count').textContent = st;
+    $('count').className = 'count' + (st >= 1000 ? ' n4' : st >= 100 ? ' n3' : '');
     const g = myRewards().filter(r => r.cost > st).sort((a, b) => a.cost - b.cost)[0];
     const ready = myRewards().filter(r => r.cost <= st).length;
     if (g) {
