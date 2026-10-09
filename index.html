@@ -96,6 +96,24 @@
   }
   .task.wiggle { animation: wiggle .4s ease; }
   .task.gone { transform: scale(.5); opacity: 0; transition: transform .3s ease-in, opacity .3s ease-in; pointer-events: none; }
+  .task .times { position: absolute; top: 8px; right: 10px; background: var(--star); color: #5a3a00; font-weight: 900; font-size: 15px; border-radius: 99px; padding: 3px 10px; }
+  .leavebtn { margin-left: 6px; padding: 3px 10px; border-radius: 99px; background: #e3f3ff; color: #1f6fb2; font-weight: 800; font-size: 13px; }
+  .bday { background: linear-gradient(90deg, #ffe1ec, #fff1c9); border-radius: 20px; padding: 12px 16px; margin: -6px 0 16px; font-weight: 900; font-size: 18px; text-align: center; box-shadow: var(--shadow); }
+  .bday[hidden] { display: none; }
+  .rsec { margin: 4px 0 18px; }
+  .rsec h4 { margin: 0 0 10px; font-size: 18px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .rsec h4 small { color: var(--muted); font-weight: 700; font-size: 14px; }
+  .fundbar { display: flex; align-items: center; gap: 10px; background: #e3f3ff; border-radius: 20px; padding: 12px 14px; margin-bottom: 12px; flex-wrap: wrap; }
+  .fundbar b { font-size: 26px; color: #1f6fb2; }
+  .fundbar .sbtn { margin-left: auto; }
+  .cashcard { background: #eafaf0 !important; }
+  .amt { display: flex; align-items: center; justify-content: center; gap: 18px; margin: 10px 0; }
+  .amt > button { width: 64px; height: 64px; border-radius: 50%; background: var(--card); box-shadow: var(--shadow); font-size: 34px; font-weight: 900; }
+  .amt > div { min-width: 130px; font-size: 22px; font-weight: 800; }
+  .amt b { font-size: 48px; color: var(--star-dark); }
+  .amt small { display: block; color: var(--muted); font-size: 16px; }
+  #pickList .bigbtn { justify-content: center; }
+  #pickList .bigbtn[disabled] { opacity: .4; }
   .alldone { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
     background: #eafaf0; border-radius: 26px; padding: 26px 16px; box-shadow: 0 6px 0 rgba(59,178,115,.25); animation: pop .5s ease; }
   .alldone span { font-size: 64px; line-height: 1; }
@@ -262,6 +280,7 @@
     <div class="streak" id="streak" hidden></div>
   </section>
 
+  <div class="bday" id="bday" hidden></div>
   <h2>🌞 Việc của bé hôm nay</h2>
   <div class="grid" id="tasks"></div>
 </div>
@@ -275,7 +294,22 @@
 <div class="sheet" id="rewardSheet"><div class="panel">
   <div class="ph"><h3>🎁 Đổi sao lấy quà</h3><button class="x" data-close>✕</button></div>
   <p class="note">Bé chạm vào món quà muốn đổi, bố mẹ xác nhận nhé.</p>
-  <div class="grid" id="rewards"></div>
+  <div id="rewards"></div>
+</div></div>
+
+<!-- Chọn số sao (góp quỹ chung, đổi tiền) -->
+<div class="sheet" id="amtSheet"><div class="panel gate">
+  <div class="ph"><h3 id="amtTitle"></h3><button class="x" data-close>✕</button></div>
+  <p class="note" id="amtNote"></p>
+  <div class="amt"><button id="amtMinus">−</button><div><b id="amtVal">0</b> ⭐<small id="amtSub"></small></div><button id="amtPlus">+</button></div>
+  <button class="bigbtn" id="amtOk" style="margin:16px auto 0"></button>
+</div></div>
+
+<!-- Chọn một trong vài lựa chọn (dùng ngày phép) -->
+<div class="sheet" id="pickSheet"><div class="panel gate">
+  <div class="ph"><h3 id="pickTitle"></h3><button class="x" data-close>✕</button></div>
+  <p class="note" id="pickNote"></p>
+  <div id="pickList" style="display:grid;gap:10px"></div>
 </div></div>
 
 <!-- Cổng phụ huynh -->
@@ -413,7 +447,23 @@ function tra_(o) {
   };
   const emojiList = kind => (S.shared.emoji && S.shared.emoji[kind]) || EMOJI[kind];
   // Thưởng chuỗi ngày: mặc định làm hết việc 3 ngày liên tiếp +2 sao, 7 ngày +5 sao
-  const streakCfg = () => Object.assign({ on: true, mode: 'all', min: 3, rules: [{ days: 3, stars: 2 }, { days: 7, stars: 5 }] }, S.shared.streak);
+  const streakCfg = () => Object.assign({ on: true, mode: 'all', min: 3, rules: [{ days: 3, stars: 2 }, { days: 7, stars: 5 }], leaveOn: true, leaveDays: 7 }, S.shared.streak);
+  // Đổi sao lấy tiền (chỉ bé lớn): mặc định 1 sao = 1.000đ, mỗi lần đổi ít nhất 10 sao
+  const cashCfg = () => Object.assign({ on: true, rate: 1000, min: 10 }, S.shared.cash);
+  const money = n => n.toLocaleString('vi-VN') + 'đ';
+  // Bé lớn: từ mốc tuổi trở lên (tính theo ngày sinh; chưa nhập ngày sinh thì theo nhóm tuổi đã chọn)
+  const bigAge = () => S.shared.bigAge || 7;
+  function ageOf(k) {
+    if (!k || !k.dob) return null;
+    const b = new Date(k.dob + 'T00:00'), n = new Date();
+    let a = n.getFullYear() - b.getFullYear();
+    if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--;
+    return a;
+  }
+  const isBig = k => !!k && (k.dob ? ageOf(k) >= bigAge() : k.age === 'lon');
+  const isBirthday = k => !!(k && k.dob && k.dob.slice(5) === dayKey().slice(5));
+  // Quỹ sao chung của các bé: dùng như một "bé" đặc biệt trong sổ sao
+  const FUND = 'fund';
 
   // Bộ gợi ý theo độ tuổi: 'nho' = 3–6 tuổi, 'lon' = 7 tuổi trở lên
   const SUGGEST = {
@@ -469,8 +519,9 @@ function tra_(o) {
   function duplicates() {
     const u = undone(), seen = new Set(), dup = new Set();
     for (const e of S.events.slice().sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1))) {
-      if ((e.type !== 'task' && e.type !== 'streak') || u.has(e.id)) continue;
-      const key = e.type === 'task' ? `${e.kid}|${e.day}|${e.task}` : `${e.kid}|${e.day}|streak${e.days}`;
+      if (!['task', 'streak', 'leave_earn', 'leave_use'].includes(e.type) || u.has(e.id)) continue;
+      // Việc làm nhiều lần/ngày: mỗi lần có số thứ tự n, trùng số thứ tự trên hai máy mới là bấm trùng
+      const key = e.type === 'task' ? `${e.kid}|${e.day}|${e.task}|${e.n || 1}` : `${e.kid}|${e.day}|${e.type}${e.days || ''}`;
       if (seen.has(key)) dup.add(e.id); else seen.add(key);
     }
     return dup;
@@ -489,6 +540,14 @@ function tra_(o) {
     return S.events.filter(e => e.type === 'task' && e.kid === kidId && e.day === day && !u.has(e.id) && !dup.has(e.id));
   };
   const doneToday = kidId => todayDone(kidId).map(e => e.task);
+  // Số lần đã làm từng việc hôm nay ({taskId: số lần}); việc biến khỏi màn hình khi đủ số lần tối đa
+  const countToday = kidId => todayDone(kidId).reduce((m, e) => (m[e.task] = (m[e.task] || 0) + 1, m), {});
+  const maxOf = t => Math.max(1, t.max || 1);
+  // Ngày phép: được tặng khi đạt chuỗi (leave_earn), dùng cho một ngày (leave_use) để chuỗi không bị đứt
+  const validEvents = (kidId, type) => { const u = undone(), dup = duplicates(); return S.events.filter(e => e.kid === kidId && e.type === type && !u.has(e.id) && !dup.has(e.id)); };
+  const leaveDays = kidId => new Set(validEvents(kidId, 'leave_use').map(e => e.day));
+  const leaveLeft = kidId => validEvents(kidId, 'leave_earn').length - validEvents(kidId, 'leave_use').length;
+  const cashTotal = kidId => validEvents(kidId, 'cash').reduce((m, e) => m + (e.money || 0), 0);
 
   /* ---------- Chuỗi ngày liên tiếp ----------
      Một ngày "đủ việc" khi bé làm hết số việc của mình hôm đó (mỗi lần bấm việc ghi kèm tổng số việc `of`,
@@ -508,26 +567,32 @@ function tra_(o) {
     return full;
   }
   // Số ngày liên tiếp: tính cả hôm nay nếu đã đủ việc, chưa đủ thì chuỗi vẫn giữ từ hôm qua
+  // Ngày nghỉ phép không làm đứt chuỗi nhưng cũng không được cộng thêm vào số ngày
   function streakOf(kidId) {
-    const full = fullDays(kidId), d = new Date();
-    if (!full.has(dayKey(d))) d.setDate(d.getDate() - 1);
-    let n = 0;
-    while (full.has(dayKey(d)) && n < 1000) { n++; d.setDate(d.getDate() - 1); }
+    const full = fullDays(kidId), leave = leaveDays(kidId), d = new Date();
+    if (!full.has(dayKey(d)) && !leave.has(dayKey(d))) d.setDate(d.getDate() - 1);
+    let n = 0, guard = 0;
+    while ((full.has(dayKey(d)) || leave.has(dayKey(d))) && guard++ < 2000) { if (full.has(dayKey(d))) n++; d.setDate(d.getDate() - 1); }
     return n;
   }
+  const streakOn = k => streakCfg().on && isBig(k);
   const todayFull = kidId => fullDays(kidId).has(dayKey());
   // Gọi khi bé vừa làm đủ việc hôm nay: thưởng các mốc chuỗi (3, 6, 9… ngày với mốc 3 ngày)
   function awardStreak(k) {
-    const cfg = streakCfg(); if (!cfg.on) return 0;
+    const cfg = streakCfg(); if (!streakOn(k)) return { bonus: 0, leave: 0 };
     const n = streakOf(k.id), day = dayKey(), u = undone();
-    let bonus = 0;
+    let bonus = 0, leave = 0;
+    if (cfg.leaveOn && cfg.leaveDays > 0 && n > 0 && n % cfg.leaveDays === 0 && !validEvents(k.id, 'leave_earn').some(e => e.day === day)) {
+      addEvent(k.id, 0, `🏖️ Được 1 ngày nghỉ phép (chuỗi ${n} ngày)`, { type: 'leave_earn', day });
+      leave = 1;
+    }
     for (const r of cfg.rules) {
       if (!(r.days > 0 && r.stars > 0 && n % r.days === 0)) continue;
       if (S.events.some(e => e.type === 'streak' && e.kid === k.id && e.day === day && e.days === r.days && !u.has(e.id))) continue;
       addEvent(k.id, r.stars, `🔥 Thưởng ${r.days} ngày liên tiếp làm đủ việc`, { type: 'streak', day, days: r.days });
       bonus += r.stars;
     }
-    return bonus;
+    return { bonus, leave };
   }
 
   // Mã PIN và mã khôi phục hiện ở cột "Tên" trong Google Trang tính để bố mẹ tra khi quên
@@ -539,7 +604,7 @@ function tra_(o) {
   function touch(it) { it.u = Date.now(); if (!S.out.it.includes(it.id)) S.out.it.push(it.id); }
   function addEvent(kidId, d, text, extra) {
     const k = S.kids.find(x => x.id === kidId);
-    const e = Object.assign({ id: uid(), t: Date.now(), kid: kidId, kn: k ? k.name : '', d, text, type: 'adjust' }, extra);
+    const e = Object.assign({ id: uid(), t: Date.now(), kid: kidId, kn: kidId === FUND ? 'Quỹ chung' : k ? k.name : '', d, text, type: 'adjust' }, extra);
     S.events.push(e); S.out.ev.push(e.id);
     return e;
   }
@@ -783,25 +848,29 @@ function tra_(o) {
       $('goal').textContent = myRewards().length ? 'Bé đủ sao đổi mọi phần quà! 🎉' : 'Bố mẹ hãy thêm phần quà nhé';
       $('bar').style.width = '100%';
     }
-    const done = doneToday(), mine = myTasks();
-    $('today').textContent = `${mine.filter(t => done.includes(t.id)).length}/${mine.length}`;
-    // Việc đã làm hôm nay ẩn khỏi màn hình, sang ngày mới tự hiện lại
-    const todo = mine.filter(t => !done.includes(t.id));
+    const cnt = countToday(), mine = myTasks();
+    $('today').textContent = `${mine.filter(t => cnt[t.id]).length}/${mine.length}`;
+    // Việc đã làm đủ số lần hôm nay ẩn khỏi màn hình, sang ngày mới tự hiện lại
+    const todo = mine.filter(t => (cnt[t.id] || 0) < maxOf(t));
     $('tasks').innerHTML = !mine.length ? '<div class="empty">Chưa có việc nào. Bố mẹ vào "Bố mẹ" để thêm nhé.</div>'
       : !todo.length ? `<div class="alldone"><span>🎉</span><b>${esc(k.name)} đã làm xong hết việc hôm nay!</b><small>Ngày mai các việc sẽ hiện lại nhé.</small></div>`
       : todo.map(t => `
       <button class="task" data-task="${t.id}">
+        ${maxOf(t) > 1 ? `<span class="times">${cnt[t.id] || 0}/${maxOf(t)}</span>` : ''}
         <span class="ic">${t.icon}</span><span class="tn">${esc(t.name)}</span><span class="ts">${stars(t.value)}</span>
       </button>`).join('');
-    const cfg = streakCfg(), n = streakOf(k.id);
-    $('streak').hidden = !cfg.on || !cfg.rules.length;
+    const cfg = streakCfg(), n = streakOf(k.id), lv = leaveLeft(k.id);
+    $('streak').hidden = !streakOn(k) || !cfg.rules.length;
     if (!$('streak').hidden) {
       // Mốc thưởng kế tiếp: ngày đủ việc tiếp theo là ngày thứ n + 1 của chuỗi
       const r = cfg.rules.filter(r => r.days > 0).map(r => ({ ...r, at: Math.ceil((n + 1) / r.days) * r.days })).sort((a, b) => a.at - b.at)[0];
       const left = r ? r.at - n : 0;
       $('streak').innerHTML = (n ? `🔥 ${n} ngày liên tiếp` : '🔥 Làm đủ việc mỗi ngày để có chuỗi') +
-        (r ? ` <small><i>· </i>thêm ${left} ngày nữa được +${r.stars} ⭐</small>` : '');
+        (r ? ` <small><i>· </i>thêm ${left} ngày nữa được +${r.stars} ⭐</small>` : '') +
+        (lv > 0 ? ` <button class="leavebtn" data-act="leave">🏖️ ${lv} ngày phép</button>` : '');
     }
+    $('bday').hidden = !isBirthday(k);
+    if (isBirthday(k)) $('bday').textContent = `🎂 Chúc mừng sinh nhật ${k.name} ${ageOf(k)} tuổi!`;
     $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
     syncBadge();
   }
@@ -816,30 +885,34 @@ function tra_(o) {
     const b = e.target.closest('[data-task]'); if (!b) return;
     const t = tasks().find(x => x.id === b.dataset.task), k = kid();
     if (!t) return;
-    if (doneToday().includes(t.id)) {
-      // Đã làm rồi: lắc nhẹ, nhắc nhở; bố mẹ có thể bỏ đánh dấu trong khu bố mẹ
+    const times = countToday()[t.id] || 0;
+    if (times >= maxOf(t)) {
+      // Đã làm đủ số lần: lắc nhẹ, nhắc nhở; bố mẹ có thể bỏ đánh dấu trong khu bố mẹ
       b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
       say(`${t.name}, con làm xong rồi mà.`);
       return;
     }
     const before = starsOf(k.id), wasFull = todayFull(k.id);
-    addEvent(k.id, t.value, `${t.icon} ${t.name}`, { type: 'task', task: t.id, day: dayKey(), of: myTasks().length });
-    const bonus = !wasFull && todayFull(k.id) ? awardStreak(k) : 0;
+    addEvent(k.id, t.value, `${t.icon} ${t.name}${maxOf(t) > 1 ? ` (lần ${times + 1})` : ''}`, { type: 'task', task: t.id, day: dayKey(), of: myTasks().length, n: times + 1 });
+    const { bonus, leave } = !wasFull && todayFull(k.id) ? awardStreak(k) : { bonus: 0, leave: 0 };
     save();
     const now = starsOf(k.id);
     flyStar(b, Math.min(t.value, 5));
     chime();
-    b.classList.add('done');
-    setTimeout(() => b.classList.add('gone'), 650);   // thu nhỏ rồi biến mất
+    if (times + 1 >= maxOf(t)) {
+      b.classList.add('done');
+      setTimeout(() => b.classList.add('gone'), 650);   // đủ số lần: thu nhỏ rồi biến mất
+    }
     setTimeout(render, 1000);
 
     const praise = PRAISE[Math.floor(Math.random() * PRAISE.length)];
     // Mốc ăn mừng lớn
     const done = doneToday();
-    const allDone = myTasks().every(x => done.includes(x.id));
+    const allDone = !wasFull && myTasks().every(x => done.includes(x.id));
     const milestone = Math.floor(now / 10) > Math.floor(before / 10);
     const newReward = myRewards().find(r => before < r.cost && now >= r.cost);
-    if (bonus) setTimeout(() => cheer('🔥', `${streakOf(k.id)} ngày liên tiếp!`, `${k.name} được thưởng thêm ${bonus} ngôi sao`), 1100);
+    if (bonus || leave) setTimeout(() => cheer(leave ? '🏖️' : '🔥', `${streakOf(k.id)} ngày liên tiếp!`,
+      bonus ? `${k.name} được thưởng thêm ${bonus} ngôi sao${leave ? ' và 1 ngày nghỉ phép' : ''}` : `${k.name} được thêm 1 ngày nghỉ phép`), 1100);
     else if (allDone) setTimeout(() => cheer('🏆', `${k.name} làm hết việc hôm nay!`, `Được ${now} ngôi sao rồi`), 1100);
     else if (newReward) setTimeout(() => cheer(newReward.icon, 'Đủ sao đổi quà rồi!', `${newReward.name}`), 1100);
     else if (milestone) setTimeout(() => cheer('🌟', `${Math.floor(now / 10) * 10} ngôi sao!`, `${k.name} giỏi quá`), 1100);
@@ -924,37 +997,122 @@ function tra_(o) {
     gateShow('Nhập mã khôi phục');
   };
 
-  /* ---------- Đổi quà ---------- */
-  function renderRewards() {
-    const st = starsOf(S.current);
-    $('rewards').innerHTML = myRewards().length ? myRewards().sort((a, b) => a.cost - b.cost).map(r => `
-      <button class="task reward ${r.cost <= st ? 'ready' : 'locked'}" data-reward="${r.id}">
+  /* ---------- Bảng chọn số sao / chọn lựa chọn ---------- */
+  function askAmount({ title, note, max, min = 1, step = 1, start, sub, ok, then }) {
+    let v = Math.min(max, Math.max(min, start || min));
+    const show = () => { $('amtVal').textContent = v; $('amtSub').textContent = sub ? sub(v) : ''; };
+    $('amtTitle').textContent = title; $('amtNote').innerHTML = note || ''; $('amtOk').textContent = ok;
+    $('amtMinus').onclick = () => { v = Math.max(min, v - step); show(); chime([520], 0); };
+    $('amtPlus').onclick = () => { v = Math.min(max, v + step); show(); chime([880], 0); };
+    $('amtOk').onclick = () => { close('amtSheet'); then(v); };
+    show(); open('amtSheet');
+  }
+  function askPick({ title, note, options }) {
+    $('pickTitle').textContent = title; $('pickNote').innerHTML = note || '';
+    $('pickList').innerHTML = options.map((o, i) => `<button class="bigbtn ${o.alt ? 'alt' : ''}" data-i="${i}" ${o.disabled ? 'disabled' : ''}>${o.label}</button>`).join('');
+    $('pickList').onclick = e => { const b = e.target.closest('[data-i]'); if (!b || b.disabled) return; close('pickSheet'); options[+b.dataset.i].then(); };
+    open('pickSheet');
+  }
+
+  /* ---------- Ngày nghỉ phép (bé lớn) ---------- */
+  function useLeave() {
+    const k = kid(), full = fullDays(k.id), leave = leaveDays(k.id);
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    const today = dayKey(), yday = dayKey(d);
+    const ok = day => !full.has(day) && !leave.has(day);
+    const apply = (day, label) => gate(`Xác nhận ${k.name} dùng 1 ngày phép cho ${label}`, () => {
+      if (leaveLeft(k.id) < 1) return;
+      addEvent(k.id, 0, `🏖️ Dùng 1 ngày phép (${label}, ${day.split('-').reverse().join('/')})`, { type: 'leave_use', day });
+      save(); render(); party(25); say(`${k.name} nghỉ phép ${label}. Chuỗi ngày vẫn được giữ nhé.`);
+    });
+    askPick({
+      title: `🏖️ Ngày phép của ${k.name}: ${leaveLeft(k.id)}`,
+      note: 'Ngày nghỉ phép không làm đứt chuỗi ngày liên tiếp (nhưng không được cộng thêm ngày). Bố mẹ nhập mã PIN để xác nhận.',
+      options: [
+        { label: '🏖️ Nghỉ hôm nay', disabled: !ok(today), then: () => apply(today, 'hôm nay') },
+        { label: '⏪ Bù cho hôm qua', alt: true, disabled: !ok(yday), then: () => apply(yday, 'hôm qua') },
+      ],
+    });
+  }
+  $('streak').onclick = e => { if (e.target.closest('[data-act="leave"]')) useLeave(); };
+
+  /* ---------- Đổi quà · đổi tiền · quỹ chung ---------- */
+  const fundRewards = () => rewards().filter(r => r.kidIds.includes(FUND));
+  const rewardCard = (r, have, attr) => `
+      <button class="task reward ${r.cost <= have ? 'ready' : 'locked'}" ${attr}="${r.id}">
         <span class="ic">${r.icon}</span><span class="tn">${esc(r.name)}</span>
         <span class="cost">⭐ ${r.cost}</span>
-      </button>`).join('') : '<div class="empty">Chưa có phần quà. Bố mẹ thêm trong khu bố mẹ nhé.</div>';
+      </button>`;
+  function renderRewards() {
+    const k = kid(), st = starsOf(k.id), fund = starsOf(FUND), cash = cashCfg(), mine = myRewards().sort((a, b) => a.cost - b.cost);
+    const showCash = cash.on && isBig(k);
+    const showFund = kids().length > 1 || fundRewards().length || fund > 0;
+    $('rewards').innerHTML = `
+      <div class="rsec"><h4>🎁 Quà của ${esc(k.name)} <small>đang có ⭐ ${st}</small></h4>
+        <div class="grid">${mine.map(r => rewardCard(r, st, 'data-reward')).join('') +
+          (showCash ? `<button class="task reward cashcard ${st >= cash.min ? 'ready' : 'locked'}" data-act="cash"><span class="ic">💵</span><span class="tn">Đổi sao lấy tiền</span><span class="cost">1 ⭐ = ${money(cash.rate)}</span></button>` : '') ||
+          '<div class="empty">Chưa có phần quà. Bố mẹ thêm trong khu bố mẹ nhé.</div>'}</div></div>` +
+      (showFund ? `
+      <div class="rsec"><h4>🏦 Quỹ sao chung</h4>
+        <div class="fundbar"><span>Cả nhà đã góp</span><b>⭐ ${fund}</b><button class="sbtn green" data-act="give">🤝 ${esc(k.name)} góp sao</button></div>
+        <div class="grid">${fundRewards().sort((a, b) => a.cost - b.cost).map(r => rewardCard(r, fund, 'data-fund')).join('') ||
+          '<div class="empty">Chưa có quà chung. Bố mẹ thêm quà và chọn "Dành cho: 🏦 Quỹ chung".</div>'}</div></div>` : '');
   }
   $('rewardBtn').onclick = () => { renderRewards(); open('rewardSheet'); say('Con muốn đổi quà gì nào?'); };
+  const wiggle = b => { b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle'); };
   $('rewards').onclick = e => {
-    const b = e.target.closest('[data-reward]'); if (!b) return;
-    const r = rewards().find(x => x.id === b.dataset.reward), k = kid(), st = starsOf(k.id);
-    if (!r) return;
-    if (r.cost > st) {
-      b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
-      say(`Con cố thêm ${r.cost - st} ngôi sao nữa nhé.`);
+    const k = kid(), st = starsOf(k.id);
+    const act = e.target.closest('[data-act]'), rb = e.target.closest('[data-reward]'), fb = e.target.closest('[data-fund]');
+    if (act && act.dataset.act === 'give') {
+      if (st < 1) { say('Con chưa có sao để góp. Làm việc tốt để có sao nhé.'); return; }
+      askAmount({ title: `🤝 ${k.name} góp sao vào quỹ chung`, note: `Con đang có ⭐ ${st}. Sao góp vào quỹ sẽ dùng chung để đổi quà cho cả nhà.`,
+        max: st, start: Math.min(5, st), ok: 'Góp vào quỹ', then: n => {
+          if (starsOf(k.id) < n) return;
+          addEvent(k.id, -n, `🤝 Góp ${n} sao vào quỹ chung`, { type: 'give' });
+          addEvent(FUND, n, `🤝 ${k.name} góp ${n} sao`, { type: 'give', from: k.id });
+          save(); render(); renderRewards(); party(30); say(`Cảm ơn ${k.name} đã góp ${n} ngôi sao vào quỹ chung!`);
+        } });
       return;
     }
-    gate(`Xác nhận đổi ${r.icon} ${r.name} (−${r.cost} sao) cho ${k.name}`, () => {
-      if (starsOf(k.id) < r.cost) return;
-      addEvent(k.id, -r.cost, `🎁 Đổi quà: ${r.icon} ${r.name}`, { type: 'reward' }); save();
-      close('rewardSheet'); render();
-      cheer(r.icon, `${k.name} đổi quà thành công!`, r.name);
-    });
+    if (act && act.dataset.act === 'cash') {
+      const c = cashCfg();
+      if (st < c.min) { wiggle(act); say(`Cần ít nhất ${c.min} ngôi sao mới đổi được tiền nhé.`); return; }
+      askAmount({ title: `💵 ${k.name} đổi sao lấy tiền`, note: `1 ⭐ = ${money(c.rate)} · mỗi lần đổi ít nhất ${c.min} ⭐.`,
+        min: c.min, max: st, start: c.min, sub: v => '= ' + money(v * c.rate), ok: 'Đổi (bố mẹ xác nhận)', then: n =>
+          gate(`Xác nhận ${k.name} đổi ${n} sao lấy ${money(n * c.rate)}`, () => {
+            if (starsOf(k.id) < n) return;
+            addEvent(k.id, -n, `💵 Đổi ${n} sao lấy ${money(n * c.rate)}`, { type: 'cash', money: n * c.rate });
+            save(); close('rewardSheet'); render();
+            cheer('💵', `${k.name} đổi được ${money(n * c.rate)}!`, 'Bố mẹ nhớ đưa tiền cho con nhé');
+          }) });
+      return;
+    }
+    if (rb) {
+      const r = rewards().find(x => x.id === rb.dataset.reward); if (!r) return;
+      if (r.cost > st) { wiggle(rb); say(`Con cố thêm ${r.cost - st} ngôi sao nữa nhé.`); return; }
+      gate(`Xác nhận đổi ${r.icon} ${r.name} (−${r.cost} sao) cho ${k.name}`, () => {
+        if (starsOf(k.id) < r.cost) return;
+        addEvent(k.id, -r.cost, `🎁 Đổi quà: ${r.icon} ${r.name}`, { type: 'reward' }); save();
+        close('rewardSheet'); render();
+        cheer(r.icon, `${k.name} đổi quà thành công!`, r.name);
+      });
+    }
+    if (fb) {
+      const r = rewards().find(x => x.id === fb.dataset.fund), fund = starsOf(FUND); if (!r) return;
+      if (r.cost > fund) { wiggle(fb); say(`Quỹ chung cần thêm ${r.cost - fund} ngôi sao nữa. Các con cùng góp nhé!`); return; }
+      gate(`Xác nhận dùng quỹ chung đổi ${r.icon} ${r.name} (−${r.cost} sao)`, () => {
+        if (starsOf(FUND) < r.cost) return;
+        addEvent(FUND, -r.cost, `🎁 Đổi quà chung: ${r.icon} ${r.name}`, { type: 'reward' }); save();
+        close('rewardSheet'); render();
+        cheer(r.icon, 'Cả nhà đổi quà chung thành công!', r.name);
+      });
+    }
   };
 
   /* ---------- Khu bố mẹ ---------- */
   // pf: lọc danh sách việc/quà theo bé ('all' = tất cả các bé)
   let tab = 'kids', editing = null, pick = null, pf = 'all';
-  const pfKid = () => kids().some(k => k.id === pf) ? pf : 'all';
+  const pfKid = () => kids().some(k => k.id === pf) || (pf === FUND && tab === 'rewards') ? pf : 'all';
   const byFilter = list => pfKid() === 'all' ? list : list.filter(x => x.kidIds.includes(pf));
   $('parentBtn').onclick = () => gate('Nhập mã PIN để vào khu bố mẹ', () => { tab = 'kids'; editing = null; pf = S.current; renderParent(); open('parentSheet'); sync(); });
   $('ptabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; editing = null; renderParent(); };
@@ -977,10 +1135,14 @@ function tra_(o) {
         </div>
         <small id="emoHint">Thêm: bấm vào ô, chuyển bàn phím sang emoji 😀 rồi chọn. Bớt: bấm "Bớt" rồi chạm vào biểu tượng muốn bỏ.</small></div>
       ${numLabel ? `<label>${numLabel}<input type="number" id="fnum" min="1" max="${isTask ? 10 : 999}" value="${num}" required></label>` : ''}
+      ${isTask ? `<label>Số lần tối đa mỗi ngày <small>(thường để 1; bé nhỏ có thể làm nhiều lần, vd. rửa tay 3 lần — mỗi lần đều được sao)</small><input type="number" id="fmax" min="1" max="10" value="${item ? maxOf(item) : 1}"></label>` : ''}
+      ${isKid ? `<label>Ngày sinh <small>(không bắt buộc — có ngày sinh thì app tự tính tuổi, tự xếp nhóm và chúc mừng sinh nhật)</small><input type="date" id="fdob" value="${item && item.dob ? item.dob : ''}" max="${dayKey()}" style="padding:12px;border-radius:12px;border:2px solid var(--line);font-size:17px;background:#fffdf6;color:var(--ink)"></label>` : ''}
       ${isKid ? `<div class="fl">Độ tuổi<span class="chips">${[['nho', '🧒 Bé nhỏ (3–6 tuổi)'], ['lon', '🧑 Bé lớn (7 tuổi trở lên)']].map(([v, t]) =>
         `<label class="chip"><input type="radio" name="fage" value="${v}" ${(item ? item.age : 'nho') === v ? 'checked' : ''}>${t}</label>`).join('')}</span>
         ${item ? '' : '<small>Bé mới tự có sẵn việc và quà hợp với độ tuổi, bố mẹ sửa lại tuỳ ý.</small>'}</div>` : `<div class="fl">Dành cho bé<span class="chips">${kids().map(k =>
-        `<label class="chip"><input type="checkbox" name="fkid" value="${k.id}" ${(item ? item.kidIds : pfKid() === 'all' ? kids().map(x => x.id) : [pf]).includes(k.id) ? 'checked' : ''}>${k.avatar} ${esc(k.name)}</label>`).join('')}</span></div>`}
+        `<label class="chip"><input type="checkbox" name="fkid" value="${k.id}" ${(item ? item.kidIds : pfKid() === 'all' ? kids().map(x => x.id) : [pf]).includes(k.id) ? 'checked' : ''}>${k.avatar} ${esc(k.name)}</label>`).join('')}${isTask ? '' :
+        `<label class="chip"><input type="checkbox" name="fkid" value="${FUND}" ${(item ? item.kidIds : pf === FUND ? [FUND] : []).includes(FUND) ? 'checked' : ''}>🏦 Quỹ chung</label>`}</span>
+        ${isTask ? '' : '<small>Chọn "🏦 Quỹ chung" để đây là quà chung, đổi bằng sao trong quỹ các bé cùng góp.</small>'}</div>`}
       <div style="display:flex;gap:8px"><button class="sbtn green" type="submit">${item ? 'Lưu' : 'Thêm'}</button><button class="sbtn" type="button" id="fcancel">Huỷ</button></div>
     </form>`;
   }
@@ -991,27 +1153,33 @@ function tra_(o) {
     document.querySelectorAll('#ptabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     const body = $('pbody');
     const addBtn = label => editing === 'new' ? formHTML(tab, null) : `<button class="sbtn green" data-act="new" style="margin-bottom:12px">＋ ${label}</button>`;
-    const forWho = it => { const ks = kids().filter(k => it.kidIds.includes(k.id)); return ks.length ? ks.map(k => `${k.avatar} ${esc(k.name)}`).join(', ') : '⚠️ chưa chọn bé'; };
-    const filterChips = () => `<div class="chips filter">${[['all', '👨‍👩‍👧 Tất cả'], ...kids().map(k => [k.id, `${k.avatar} ${esc(k.name)}`])]
+    const forWho = it => { const ks = kids().filter(k => it.kidIds.includes(k.id)).map(k => `${k.avatar} ${esc(k.name)}`); if (it.kidIds.includes(FUND)) ks.push('🏦 Quỹ chung'); return ks.length ? ks.join(', ') : '⚠️ chưa chọn bé'; };
+    const filterChips = () => `<div class="chips filter">${[['all', '👨‍👩‍👧 Tất cả'], ...kids().map(k => [k.id, `${k.avatar} ${esc(k.name)}`]), ...(tab === 'rewards' ? [[FUND, '🏦 Quỹ chung']] : [])]
       .map(([id, label]) => `<button class="chip ${pfKid() === id ? 'on' : ''}" data-act="filter" data-id="${id}">${label}${id === 'all' ? '' : ` <small>${(tab === 'tasks' ? tasks() : rewards()).filter(x => x.kidIds.includes(id)).length}</small>`}</button>`).join('')}</div>`;
     const formFor = (it, html) => editing === it.id ? formHTML(tab, it) : html;
 
     if (tab === 'kids') {
       body.innerHTML = addBtn('Thêm bé') + kids().map(k => formFor(k, `
         <div class="row"><span class="e">${k.avatar}</span>
-          <span class="t">${esc(k.name)}<small>${k.age === 'lon' ? 'Bé lớn' : 'Bé nhỏ'} · ⭐ ${starsOf(k.id)} sao · hôm nay xong ${myTasks(k.id).filter(t => doneToday(k.id).includes(t.id)).length}/${myTasks(k.id).length} việc</small></span>
+          <span class="t">${esc(k.name)}<small>${ageOf(k) !== null ? `${ageOf(k)} tuổi · ` : ''}${isBig(k) ? 'Bé lớn' : 'Bé nhỏ'}${isBirthday(k) ? ' · 🎂 sinh nhật hôm nay' : ''} · ⭐ ${starsOf(k.id)} sao · hôm nay xong ${myTasks(k.id).filter(t => doneToday(k.id).includes(t.id)).length}/${myTasks(k.id).length} việc${isBig(k) ? ` · 🏖️ ${leaveLeft(k.id)} ngày phép` : ''}${cashTotal(k.id) ? ` · 💵 đã đổi ${money(cashTotal(k.id))}` : ''}</small></span>
           <button class="sbtn" data-act="minus" data-id="${k.id}">−1 ⭐</button>
           <button class="sbtn" data-act="plus" data-id="${k.id}">+1 ⭐</button>
           <button class="sbtn" data-act="edit" data-id="${k.id}">✏️</button>
           ${kids().length > 1 ? `<button class="sbtn red" data-act="del" data-id="${k.id}">🗑</button>` : ''}
-        </div>`)).join('') + `<p class="note">Dùng +1/−1 để thưởng thêm hoặc sửa khi bấm nhầm. Muốn bỏ đánh dấu một việc hôm nay, vào tab "Việc làm".</p>
+        </div>`)).join('') + `
+        <div class="row"><span class="e">🏦</span><span class="t">Quỹ sao chung<small>⭐ ${starsOf(FUND)} sao · các bé góp trong mục Đổi quà, dùng đổi quà chung</small></span>
+          <button class="sbtn" data-act="minus" data-id="${FUND}">−1 ⭐</button>
+          <button class="sbtn" data-act="plus" data-id="${FUND}">+1 ⭐</button></div>
+        <div class="form"><span class="rule">🧑 Mốc tuổi bé lớn: <input type="number" id="bigAge" min="3" max="18" value="${bigAge()}"> tuổi</span>
+          <small>Bé từ mốc tuổi này (theo ngày sinh) mới có chuỗi ngày, ngày nghỉ phép và đổi sao lấy tiền. Bé chưa nhập ngày sinh thì theo nhóm tuổi đã chọn.</small></div>
+        <p class="note">Dùng +1/−1 để thưởng thêm hoặc sửa khi bấm nhầm. Muốn bỏ đánh dấu một việc hôm nay, vào tab "Việc làm".</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="sbtn" data-act="pin">🔑 Đổi mã PIN bố mẹ</button><button class="sbtn" data-act="rec">🗝️ Xem mã khôi phục</button></div>`;
     } else if (tab === 'tasks') {
-      const one = pfKid() !== 'all', done = one ? doneToday(pf) : [], list = byFilter(tasks());
+      const one = pfKid() !== 'all', cnt = one ? countToday(pf) : {}, done = Object.keys(cnt), list = byFilter(tasks());
       body.innerHTML = filterChips() + `<p class="note">${one ? 'Đang xem việc của bé này; ✅ là việc đã xong hôm nay (việc tự đánh dấu lại mỗi ngày).' : 'Đang xem việc của tất cả các bé. Chọn một bé để xem việc đã xong hôm nay.'}</p>` +
         addBtn('Thêm việc') + (list.length ? '' : '<div class="empty">Bé này chưa có việc nào.</div>') + list.map((t, i) => formFor(t, `
         <div class="row"><span class="e">${t.icon}</span>
-          <span class="t">${esc(t.name)}<small>${stars(t.value)} · ${forWho(t)}${done.includes(t.id) ? ' · ✅ xong hôm nay' : ''}</small></span>
+          <span class="t">${esc(t.name)}<small>${stars(t.value)}${maxOf(t) > 1 ? ` · tối đa ${maxOf(t)} lần/ngày` : ''} · ${forWho(t)}${done.includes(t.id) ? ` · ✅ ${maxOf(t) > 1 ? `${cnt[t.id]}/${maxOf(t)} lần` : 'xong'} hôm nay` : ''}</small></span>
           ${done.includes(t.id) ? `<button class="sbtn" data-act="undo" data-id="${t.id}">↩︎ Bỏ đánh dấu</button>` : ''}
           <button class="sbtn" data-act="up" data-id="${t.id}" ${i ? '' : 'disabled style="opacity:.3"'}>▲</button>
           <button class="sbtn" data-act="edit" data-id="${t.id}">✏️</button>
@@ -1032,6 +1200,12 @@ function tra_(o) {
             ${cfg.rules.map((r, i) => `<span class="rule">Mỗi <input type="number" min="1" max="365" data-rule="${i}" data-f="days" value="${r.days}"> ngày liên tiếp → +<input type="number" min="1" max="100" data-rule="${i}" data-f="stars" value="${r.stars}"> ⭐ <button type="button" class="sbtn red" data-act="rmrule" data-id="${i}">🗑</button></span>`).join('')}
             <button type="button" class="sbtn" data-act="addrule" style="justify-self:start">＋ Thêm mốc</button>
           </div>
+          <label class="chip" style="justify-content:flex-start"><input type="checkbox" id="lvOn" ${cfg.leaveOn ? 'checked' : ''}> 🏖️ Ngày nghỉ phép: mỗi&nbsp;<input type="number" id="lvDays" min="2" max="60" value="${cfg.leaveDays}" style="width:60px;padding:6px;text-align:center;border-radius:10px;border:2px solid var(--line)">&nbsp;ngày liên tiếp được +1 ngày phép</label>
+          <small>Chuỗi ngày, ngày phép chỉ áp dụng cho bé lớn (từ ${bigAge()} tuổi — chỉnh ở tab Các bé).</small>
+        </div>
+        <div class="form" id="cashForm">
+          <label class="chip" style="justify-content:flex-start"><input type="checkbox" id="cashOn" ${cashCfg().on ? 'checked' : ''}> 💵 <b>Đổi sao lấy tiền</b> (bé lớn)</label>
+          <span class="rule">1 ⭐ = <input type="number" id="cashRate" min="100" step="100" value="${cashCfg().rate}" style="width:110px !important"> đồng · mỗi lần ít nhất <input type="number" id="cashMin" min="1" value="${cashCfg().min}"> ⭐</span>
         </div>` + filterChips() + addBtn('Thêm phần quà') + (byFilter(rewards()).length ? '' : '<div class="empty">Bé này chưa có phần quà nào.</div>') + byFilter(rewards()).map(r => formFor(r, `
         <div class="row"><span class="e">${r.icon}</span>
           <span class="t">${esc(r.name)}<small>⭐ ${r.cost} sao · ${forWho(r)}</small></span>
@@ -1045,7 +1219,13 @@ function tra_(o) {
         else if (el.id === 'stMode') { c.mode = el.value; $('stMinRow').hidden = el.value !== 'min'; }
         else if (el.id === 'stMin') c.min = Math.max(1, parseInt(el.value, 10) || 1);
         else if (el.dataset.rule) c.rules = c.rules.map((r, i) => i === +el.dataset.rule ? { ...r, [el.dataset.f]: Math.max(1, parseInt(el.value, 10) || 1) } : r);
+        else if (el.id === 'lvOn') c.leaveOn = el.checked;
+        else if (el.id === 'lvDays') c.leaveDays = Math.max(2, parseInt(el.value, 10) || 7);
         S.shared.streak = c; touchShared(); save(); render();
+      };
+      $('cashForm').onchange = () => {
+        S.shared.cash = { on: $('cashOn').checked, rate: Math.max(100, parseInt($('cashRate').value, 10) || 1000), min: Math.max(1, parseInt($('cashMin').value, 10) || 1) };
+        touchShared(); save();
       };
     } else if (tab === 'voice') {
       const list = viVoices(), cur = bestVoice();
@@ -1103,7 +1283,7 @@ function tra_(o) {
           </ol>
         </details>`;
     } else {
-      const names = Object.fromEntries(S.kids.map(k => [k.id, `${k.avatar} ${esc(k.name)}`]));
+      const names = Object.fromEntries([...S.kids.map(k => [k.id, `${k.avatar} ${esc(k.name)}`]), [FUND, '🏦 Quỹ chung']]);
       // Tổng sao 7 ngày gần nhất theo từng bé
       const week = Date.now() - 7 * 864e5, u = undone(), dup = duplicates();
       const sum = {};
@@ -1111,7 +1291,7 @@ function tra_(o) {
       const log = S.events.slice().sort((a, b) => b.t - a.t).slice(0, 150);
       body.innerHTML = `<p class="note">7 ngày qua: ${kids().map(k => `${k.avatar} ${esc(k.name)} được <b>${sum[k.id] || 0}</b> sao`).join(' · ')}</p>
         <div class="hist">${log.length ? log.map(e => `<div class="row" ${dup.has(e.id) ? 'style="opacity:.5"' : ''}><span class="t">${esc(e.text)}${dup.has(e.id) ? ' <small style="display:inline">(bấm trùng trên máy khác, không tính)</small>' : ''}<small>${names[e.kid] || esc(e.kn || '—')} · ${timeText(e.t)}</small></span>
-            <span class="${e.d > 0 ? 'plus' : 'minus'}">${e.d > 0 ? '+' : ''}${e.d} ⭐</span></div>`).join('') : '<div class="empty">Chưa có gì.</div>'}</div>
+            <span class="${e.d >= 0 ? 'plus' : 'minus'}">${e.d ? `${e.d > 0 ? '+' : ''}${e.d} ⭐` : e.type === 'leave_earn' ? '+1 🏖️' : e.type === 'leave_use' ? '−1 🏖️' : ''}</span></div>`).join('') : '<div class="empty">Chưa có gì.</div>'}</div>
         <p class="note" style="margin-top:16px"><b>Sao lưu:</b> lưu toàn bộ sao, việc, quà ra một file (gửi qua Zalo/AirDrop hoặc lưu vào Tệp) để phòng khi xoá app.${S.sync.url ? ' Máy đang đồng bộ nên dữ liệu đã nằm an toàn trong Google Trang tính.' : ''}</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="sbtn green" data-act="backup">💾 Sao lưu ra file</button>
@@ -1131,6 +1311,16 @@ function tra_(o) {
       };
     }
 
+    if ($('bigAge')) $('bigAge').onchange = e => {
+      S.shared.bigAge = Math.min(18, Math.max(3, parseInt(e.target.value, 10) || 7));
+      // Bé có ngày sinh: xếp lại nhóm tuổi theo mốc mới
+      kids().filter(k => k.dob).forEach(k => { const a = isBig(k) ? 'lon' : 'nho'; if (k.age !== a) { k.age = a; touch(k); } });
+      touchShared(); save(); render(); renderParent();
+    };
+    if ($('fdob')) $('fdob').oninput = e => {
+      const r = $('pform').querySelector(`[name=fage][value=${e.target.value && isBig({ dob: e.target.value }) ? 'lon' : 'nho'}]`);
+      if (e.target.value && r) r.checked = true;
+    };
     const f = $('pform');
     if (f) {
       $('fname').focus();
@@ -1169,9 +1359,12 @@ function tra_(o) {
         const num = $('fnum') ? Math.max(1, parseInt($('fnum').value, 10) || 1) : 0;
         let it = editing === 'new' ? null : S[tab].find(x => x.id === editing);
         if (tab === 'kids') {
-          const age = f.querySelector('[name=fage]:checked').value;
-          if (it) { Object.assign(it, { name, avatar: pick, age }); touch(it); }
-          else S.current = addKid({ name, avatar: pick, age }).id;
+          const dob = $('fdob').value || '';
+          // Có ngày sinh thì nhóm tuổi theo mốc tuổi bé lớn; không thì theo lựa chọn
+          let age = f.querySelector('[name=fage]:checked').value;
+          if (dob) age = isBig({ dob }) ? 'lon' : 'nho';
+          if (it) { Object.assign(it, { name, avatar: pick, age, dob }); touch(it); }
+          else { const k = addKid({ name, avatar: pick, age }); k.dob = dob; touch(k); S.current = k.id; }
           editing = null; save(); renderParent(); render(); return;
         }
         const kidIds = [...f.querySelectorAll('[name=fkid]:checked')].map(x => x.value);
@@ -1182,7 +1375,7 @@ function tra_(o) {
           S[tab].push(it);
         }
         Object.assign(it, { name, icon: pick, kidIds });
-        if (tab === 'tasks') it.value = Math.min(10, num);
+        if (tab === 'tasks') { it.value = Math.min(10, num); it.max = Math.min(10, Math.max(1, parseInt($('fmax').value, 10) || 1)); }
         if (tab === 'rewards') it.cost = num;
         touch(it);
         editing = null; save(); renderParent(); render();
@@ -1232,13 +1425,13 @@ function tra_(o) {
       }
     } else if (act === 'undo') {
       const who = pfKid(); if (who === 'all') return;
-      const ev = todayDone(who).find(x => x.task === id), t = tasks().find(x => x.id === id);
+      const ev = todayDone(who).filter(x => x.task === id).pop(), t = tasks().find(x => x.id === id);
       if (!ev) return;
       addEvent(who, -ev.d, `↩︎ Bỏ đánh dấu: ${t ? `${t.icon} ${t.name}` : ev.text}`, { type: 'undo', ref: ev.id });
       if (!todayFull(who)) {
         const u = undone(), dup = duplicates();
-        S.events.filter(e => e.type === 'streak' && e.kid === who && e.day === dayKey() && !u.has(e.id) && !dup.has(e.id))
-          .forEach(e => addEvent(who, -e.d, `↩︎ Bỏ thưởng chuỗi ${e.days} ngày`, { type: 'undo', ref: e.id }));
+        S.events.filter(e => (e.type === 'streak' || e.type === 'leave_earn') && e.kid === who && e.day === dayKey() && !u.has(e.id) && !dup.has(e.id))
+          .forEach(e => addEvent(who, -e.d, e.type === 'streak' ? `↩︎ Bỏ thưởng chuỗi ${e.days} ngày` : '↩︎ Bỏ ngày phép vừa được tặng', { type: 'undo', ref: e.id }));
       }
     } else if (act === 'backup') {
       const name = `sao-cho-be-${dayKey()}.json`;
