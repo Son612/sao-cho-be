@@ -100,6 +100,8 @@
   .leavebtn { margin-left: 6px; padding: 3px 10px; border-radius: 99px; background: #e3f3ff; color: #1f6fb2; font-weight: 800; font-size: 13px; }
   .bday { background: linear-gradient(90deg, #ffe1ec, #fff1c9); border-radius: 20px; padding: 12px 16px; margin: -6px 0 16px; font-weight: 900; font-size: 18px; text-align: center; box-shadow: var(--shadow); }
   .bday[hidden] { display: none; }
+  .fundpill { margin-left: auto; background: #e3f3ff; color: #1f6fb2; border-radius: 99px; padding: 4px 12px; font-size: 18px; }
+  #fundTasks .task { background: #f1f8ff; }
   .rsec { margin: 4px 0 18px; }
   .rsec h4 { margin: 0 0 10px; font-size: 18px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .rsec h4 small { color: var(--muted); font-weight: 700; font-size: 14px; }
@@ -283,6 +285,11 @@
   <div class="bday" id="bday" hidden></div>
   <h2>🌞 Việc của bé hôm nay</h2>
   <div class="grid" id="tasks"></div>
+  <div id="fundWrap" hidden>
+    <h2 style="margin-top:22px">🤝 Việc chung <span class="fundpill" id="fundPill"></span></h2>
+    <p class="note" style="margin-top:-6px">Sao của việc chung vào quỹ chung của các anh em (không cộng cho riêng ai), dùng đổi quà chung.</p>
+    <div class="grid" id="fundTasks"></div>
+  </div>
 </div>
 
 <div class="dock">
@@ -512,7 +519,9 @@ function tra_(o) {
   const tasks = () => live(S.tasks).sort((a, b) => a.o - b.o);
   const rewards = () => live(S.rewards);
   const kid = () => kids().find(k => k.id === S.current);
-  const myTasks = (kidId = S.current) => tasks().filter(t => t.kidIds.includes(kidId));
+  // Việc riêng của bé (sao cộng cho bé) và việc chung (t.fund: sao vào quỹ chung, một bé làm là xong cho cả nhà)
+  const myTasks = (kidId = S.current) => tasks().filter(t => !t.fund && t.kidIds.includes(kidId));
+  const myFundTasks = (kidId = S.current) => tasks().filter(t => t.fund && t.kidIds.includes(kidId));
   const myRewards = (kidId = S.current) => rewards().filter(r => r.kidIds.includes(kidId));
   const undone = () => new Set(S.events.filter(e => e.type === 'undo').map(e => e.ref));
   // Cùng một việc trong ngày được bấm trên hai máy trước khi kịp đồng bộ → chỉ tính lần đầu
@@ -541,7 +550,9 @@ function tra_(o) {
   };
   const doneToday = kidId => todayDone(kidId).map(e => e.task);
   // Số lần đã làm từng việc hôm nay ({taskId: số lần}); việc biến khỏi màn hình khi đủ số lần tối đa
-  const countToday = kidId => todayDone(kidId).reduce((m, e) => (m[e.task] = (m[e.task] || 0) + 1, m), {});
+  const countEv = list => list.reduce((m, e) => (m[e.task] = (m[e.task] || 0) + 1, m), {});
+  // Gồm cả việc chung đã làm hôm nay (ghi dưới quỹ chung) để việc chung biến mất với mọi bé
+  const countToday = (kidId = S.current) => kidId === FUND ? countEv(todayDone(FUND)) : countEv([...todayDone(kidId), ...todayDone(FUND)]);
   const maxOf = t => Math.max(1, t.max || 1);
   // Ngày phép: được tặng khi đạt chuỗi (leave_earn), dùng cho một ngày (leave_use) để chuỗi không bị đứt
   const validEvents = (kidId, type) => { const u = undone(), dup = duplicates(); return S.events.filter(e => e.kid === kidId && e.type === type && !u.has(e.id) && !dup.has(e.id)); };
@@ -800,8 +811,8 @@ function tra_(o) {
       setTimeout(() => s.remove(), 4500);
     }
   }
-  function flyStar(fromEl, count) {
-    const a = fromEl.getBoundingClientRect(), b = $('bigstar').getBoundingClientRect();
+  function flyStar(fromEl, count, to = $('bigstar')) {
+    const a = fromEl.getBoundingClientRect(), b = to.getBoundingClientRect();
     for (let i = 0; i < count; i++) {
       const s = document.createElement('div');
       s.className = 'fly'; s.textContent = '⭐';
@@ -869,6 +880,15 @@ function tra_(o) {
         (r ? ` <small><i>· </i>thêm ${left} ngày nữa được +${r.stars} ⭐</small>` : '') +
         (lv > 0 ? ` <button class="leavebtn" data-act="leave">🏖️ ${lv} ngày phép</button>` : '');
     }
+    // Việc chung: sao vào quỹ, đủ số lần thì ẩn với mọi bé
+    const ft = myFundTasks(), ftodo = ft.filter(t => (cnt[t.id] || 0) < maxOf(t));
+    $('fundWrap').hidden = !ft.length;
+    $('fundPill').textContent = `🏦 ⭐ ${starsOf(FUND)}`;
+    $('fundTasks').innerHTML = ftodo.length ? ftodo.map(t => `
+      <button class="task" data-task="${t.id}">
+        ${maxOf(t) > 1 ? `<span class="times">${cnt[t.id] || 0}/${maxOf(t)}</span>` : ''}
+        <span class="ic">${t.icon}</span><span class="tn">${esc(t.name)}</span><span class="ts">${stars(t.value)}</span>
+      </button>`).join('') : '<div class="alldone"><span>🤝</span><b>Các anh em đã làm xong việc chung hôm nay!</b></div>';
     $('bday').hidden = !isBirthday(k);
     if (isBirthday(k)) $('bday').textContent = `🎂 Chúc mừng sinh nhật ${k.name} ${ageOf(k)} tuổi!`;
     $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
@@ -881,7 +901,7 @@ function tra_(o) {
     say(kid().name);
   };
 
-  $('tasks').onclick = e => {
+  $('tasks').onclick = $('fundTasks').onclick = e => {
     const b = e.target.closest('[data-task]'); if (!b) return;
     const t = tasks().find(x => x.id === b.dataset.task), k = kid();
     if (!t) return;
@@ -890,6 +910,20 @@ function tra_(o) {
       // Đã làm đủ số lần: lắc nhẹ, nhắc nhở; bố mẹ có thể bỏ đánh dấu trong khu bố mẹ
       b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
       say(`${t.name}, con làm xong rồi mà.`);
+      return;
+    }
+    if (t.fund) {
+      // Việc chung: sao vào quỹ chung, ghi tên bé đã bấm
+      const before = starsOf(FUND);
+      addEvent(FUND, t.value, `${t.icon} ${t.name} · ${k.name}`, { type: 'task', task: t.id, day: dayKey(), n: times + 1, by: k.id });
+      save();
+      const now = starsOf(FUND);
+      flyStar(b, Math.min(t.value, 5), $('fundPill')); chime();
+      if (times + 1 >= maxOf(t)) { b.classList.add('done'); setTimeout(() => b.classList.add('gone'), 650); }
+      setTimeout(render, 1000);
+      const ready = fundRewards().find(r => before < r.cost && now >= r.cost);
+      if (ready) setTimeout(() => cheer(ready.icon, 'Quỹ chung đủ sao đổi quà rồi!', ready.name), 1100);
+      else { party(18); say(`Giỏi quá! ${t.name}. Quỹ chung được thêm ${t.value} ngôi sao.`); }
       return;
     }
     const before = starsOf(k.id), wasFull = todayFull(k.id);
@@ -1046,7 +1080,7 @@ function tra_(o) {
   function renderRewards() {
     const k = kid(), st = starsOf(k.id), fund = starsOf(FUND), cash = cashCfg(), mine = myRewards().sort((a, b) => a.cost - b.cost);
     const showCash = cash.on && isBig(k);
-    const showFund = kids().length > 1 || fundRewards().length || fund > 0;
+    const showFund = fundRewards().length || fund > 0 || tasks().some(t => t.fund);
     $('rewards').innerHTML = `
       <div class="rsec"><h4>🎁 Quà của ${esc(k.name)} <small>đang có ⭐ ${st}</small></h4>
         <div class="grid">${mine.map(r => rewardCard(r, st, 'data-reward')).join('') +
@@ -1054,7 +1088,7 @@ function tra_(o) {
           '<div class="empty">Chưa có phần quà. Bố mẹ thêm trong khu bố mẹ nhé.</div>'}</div></div>` +
       (showFund ? `
       <div class="rsec"><h4>🏦 Quỹ sao chung</h4>
-        <div class="fundbar"><span>Cả nhà đã góp</span><b>⭐ ${fund}</b><button class="sbtn green" data-act="give">🤝 ${esc(k.name)} góp sao</button></div>
+        <div class="fundbar"><span>Quỹ chung đang có</span><b>⭐ ${fund}</b><small style="flex-basis:100%;color:var(--muted);font-weight:700">Sao từ các việc chung của anh em, riêng với sao của từng bé.</small></div>
         <div class="grid">${fundRewards().sort((a, b) => a.cost - b.cost).map(r => rewardCard(r, fund, 'data-fund')).join('') ||
           '<div class="empty">Chưa có quà chung. Bố mẹ thêm quà và chọn "Dành cho: 🏦 Quỹ chung".</div>'}</div></div>` : '');
   }
@@ -1063,17 +1097,6 @@ function tra_(o) {
   $('rewards').onclick = e => {
     const k = kid(), st = starsOf(k.id);
     const act = e.target.closest('[data-act]'), rb = e.target.closest('[data-reward]'), fb = e.target.closest('[data-fund]');
-    if (act && act.dataset.act === 'give') {
-      if (st < 1) { say('Con chưa có sao để góp. Làm việc tốt để có sao nhé.'); return; }
-      askAmount({ title: `🤝 ${k.name} góp sao vào quỹ chung`, note: `Con đang có ⭐ ${st}. Sao góp vào quỹ sẽ dùng chung để đổi quà cho cả nhà.`,
-        max: st, start: Math.min(5, st), ok: 'Góp vào quỹ', then: n => {
-          if (starsOf(k.id) < n) return;
-          addEvent(k.id, -n, `🤝 Góp ${n} sao vào quỹ chung`, { type: 'give' });
-          addEvent(FUND, n, `🤝 ${k.name} góp ${n} sao`, { type: 'give', from: k.id });
-          save(); render(); renderRewards(); party(30); say(`Cảm ơn ${k.name} đã góp ${n} ngôi sao vào quỹ chung!`);
-        } });
-      return;
-    }
     if (act && act.dataset.act === 'cash') {
       const c = cashCfg();
       if (st < c.min) { wiggle(act); say(`Cần ít nhất ${c.min} ngôi sao mới đổi được tiền nhé.`); return; }
@@ -1112,8 +1135,8 @@ function tra_(o) {
   /* ---------- Khu bố mẹ ---------- */
   // pf: lọc danh sách việc/quà theo bé ('all' = tất cả các bé)
   let tab = 'kids', editing = null, pick = null, pf = 'all';
-  const pfKid = () => kids().some(k => k.id === pf) || (pf === FUND && tab === 'rewards') ? pf : 'all';
-  const byFilter = list => pfKid() === 'all' ? list : list.filter(x => x.kidIds.includes(pf));
+  const pfKid = () => kids().some(k => k.id === pf) || pf === FUND ? pf : 'all';
+  const byFilter = list => pfKid() === 'all' ? list : pf === FUND && tab === 'tasks' ? list.filter(x => x.fund) : list.filter(x => x.kidIds.includes(pf));
   $('parentBtn').onclick = () => gate('Nhập mã PIN để vào khu bố mẹ', () => { tab = 'kids'; editing = null; pf = S.current; renderParent(); open('parentSheet'); sync(); });
   $('ptabs').onclick = e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; editing = null; renderParent(); };
 
@@ -1135,12 +1158,13 @@ function tra_(o) {
         </div>
         <small id="emoHint">Thêm: bấm vào ô, chuyển bàn phím sang emoji 😀 rồi chọn. Bớt: bấm "Bớt" rồi chạm vào biểu tượng muốn bỏ.</small></div>
       ${numLabel ? `<label>${numLabel}<input type="number" id="fnum" min="1" max="${isTask ? 10 : 999}" value="${num}" required></label>` : ''}
+      ${isTask ? `<label class="chip" style="justify-content:flex-start;background:#e3f3ff"><input type="checkbox" id="ffund" ${(item ? item.fund : pf === FUND) ? 'checked' : ''}> 🏦 <b>Việc chung</b>&nbsp;— sao vào quỹ chung, không cộng cho riêng bé; một bé làm là xong cho cả nhà</label>` : ''}
       ${isTask ? `<label>Số lần tối đa mỗi ngày <small>(thường để 1; bé nhỏ có thể làm nhiều lần, vd. rửa tay 3 lần — mỗi lần đều được sao)</small><input type="number" id="fmax" min="1" max="10" value="${item ? maxOf(item) : 1}"></label>` : ''}
       ${isKid ? `<label>Ngày sinh <small>(không bắt buộc — có ngày sinh thì app tự tính tuổi, tự xếp nhóm và chúc mừng sinh nhật)</small><input type="date" id="fdob" value="${item && item.dob ? item.dob : ''}" max="${dayKey()}" style="padding:12px;border-radius:12px;border:2px solid var(--line);font-size:17px;background:#fffdf6;color:var(--ink)"></label>` : ''}
       ${isKid ? `<div class="fl">Độ tuổi<span class="chips">${[['nho', '🧒 Bé nhỏ (3–6 tuổi)'], ['lon', '🧑 Bé lớn (7 tuổi trở lên)']].map(([v, t]) =>
         `<label class="chip"><input type="radio" name="fage" value="${v}" ${(item ? item.age : 'nho') === v ? 'checked' : ''}>${t}</label>`).join('')}</span>
         ${item ? '' : '<small>Bé mới tự có sẵn việc và quà hợp với độ tuổi, bố mẹ sửa lại tuỳ ý.</small>'}</div>` : `<div class="fl">Dành cho bé<span class="chips">${kids().map(k =>
-        `<label class="chip"><input type="checkbox" name="fkid" value="${k.id}" ${(item ? item.kidIds : pfKid() === 'all' ? kids().map(x => x.id) : [pf]).includes(k.id) ? 'checked' : ''}>${k.avatar} ${esc(k.name)}</label>`).join('')}${isTask ? '' :
+        `<label class="chip"><input type="checkbox" name="fkid" value="${k.id}" ${(item ? item.kidIds : pfKid() === 'all' || pf === FUND ? kids().map(x => x.id) : [pf]).includes(k.id) ? 'checked' : ''}>${k.avatar} ${esc(k.name)}</label>`).join('')}${isTask ? '' :
         `<label class="chip"><input type="checkbox" name="fkid" value="${FUND}" ${(item ? item.kidIds : pf === FUND ? [FUND] : []).includes(FUND) ? 'checked' : ''}>🏦 Quỹ chung</label>`}</span>
         ${isTask ? '' : '<small>Chọn "🏦 Quỹ chung" để đây là quà chung, đổi bằng sao trong quỹ các bé cùng góp.</small>'}</div>`}
       <div style="display:flex;gap:8px"><button class="sbtn green" type="submit">${item ? 'Lưu' : 'Thêm'}</button><button class="sbtn" type="button" id="fcancel">Huỷ</button></div>
@@ -1154,8 +1178,8 @@ function tra_(o) {
     const body = $('pbody');
     const addBtn = label => editing === 'new' ? formHTML(tab, null) : `<button class="sbtn green" data-act="new" style="margin-bottom:12px">＋ ${label}</button>`;
     const forWho = it => { const ks = kids().filter(k => it.kidIds.includes(k.id)).map(k => `${k.avatar} ${esc(k.name)}`); if (it.kidIds.includes(FUND)) ks.push('🏦 Quỹ chung'); return ks.length ? ks.join(', ') : '⚠️ chưa chọn bé'; };
-    const filterChips = () => `<div class="chips filter">${[['all', '👨‍👩‍👧 Tất cả'], ...kids().map(k => [k.id, `${k.avatar} ${esc(k.name)}`]), ...(tab === 'rewards' ? [[FUND, '🏦 Quỹ chung']] : [])]
-      .map(([id, label]) => `<button class="chip ${pfKid() === id ? 'on' : ''}" data-act="filter" data-id="${id}">${label}${id === 'all' ? '' : ` <small>${(tab === 'tasks' ? tasks() : rewards()).filter(x => x.kidIds.includes(id)).length}</small>`}</button>`).join('')}</div>`;
+    const filterChips = () => `<div class="chips filter">${[['all', '👨‍👩‍👧 Tất cả'], ...kids().map(k => [k.id, `${k.avatar} ${esc(k.name)}`]), [FUND, tab === 'rewards' ? '🏦 Quỹ chung' : '🏦 Việc chung']]
+      .map(([id, label]) => `<button class="chip ${pfKid() === id ? 'on' : ''}" data-act="filter" data-id="${id}">${label}${id === 'all' ? '' : ` <small>${id === FUND && tab === 'tasks' ? tasks().filter(x => x.fund).length : (tab === 'tasks' ? tasks() : rewards()).filter(x => x.kidIds.includes(id)).length}</small>`}</button>`).join('')}</div>`;
     const formFor = (it, html) => editing === it.id ? formHTML(tab, it) : html;
 
     if (tab === 'kids') {
@@ -1167,7 +1191,7 @@ function tra_(o) {
           <button class="sbtn" data-act="edit" data-id="${k.id}">✏️</button>
           ${kids().length > 1 ? `<button class="sbtn red" data-act="del" data-id="${k.id}">🗑</button>` : ''}
         </div>`)).join('') + `
-        <div class="row"><span class="e">🏦</span><span class="t">Quỹ sao chung<small>⭐ ${starsOf(FUND)} sao · các bé góp trong mục Đổi quà, dùng đổi quà chung</small></span>
+        <div class="row"><span class="e">🏦</span><span class="t">Quỹ sao chung<small>⭐ ${starsOf(FUND)} sao · từ các việc chung của anh em, riêng với sao của từng bé, dùng đổi quà chung</small></span>
           <button class="sbtn" data-act="minus" data-id="${FUND}">−1 ⭐</button>
           <button class="sbtn" data-act="plus" data-id="${FUND}">+1 ⭐</button></div>
         <div class="form"><span class="rule">🧑 Mốc tuổi bé lớn: <input type="number" id="bigAge" min="3" max="18" value="${bigAge()}"> tuổi</span>
@@ -1177,9 +1201,9 @@ function tra_(o) {
     } else if (tab === 'tasks') {
       const one = pfKid() !== 'all', cnt = one ? countToday(pf) : {}, done = Object.keys(cnt), list = byFilter(tasks());
       body.innerHTML = filterChips() + `<p class="note">${one ? 'Đang xem việc của bé này; ✅ là việc đã xong hôm nay (việc tự đánh dấu lại mỗi ngày).' : 'Đang xem việc của tất cả các bé. Chọn một bé để xem việc đã xong hôm nay.'}</p>` +
-        addBtn('Thêm việc') + (list.length ? '' : '<div class="empty">Bé này chưa có việc nào.</div>') + list.map((t, i) => formFor(t, `
+        addBtn('Thêm việc') + (editing ? '' : `<button class="sbtn" data-act="fundsuggest" style="margin:0 0 12px 8px">🤝 Thêm gợi ý việc chung</button>`) + (list.length ? '' : '<div class="empty">Chưa có việc nào.</div>') + list.map((t, i) => formFor(t, `
         <div class="row"><span class="e">${t.icon}</span>
-          <span class="t">${esc(t.name)}<small>${stars(t.value)}${maxOf(t) > 1 ? ` · tối đa ${maxOf(t)} lần/ngày` : ''} · ${forWho(t)}${done.includes(t.id) ? ` · ✅ ${maxOf(t) > 1 ? `${cnt[t.id]}/${maxOf(t)} lần` : 'xong'} hôm nay` : ''}</small></span>
+          <span class="t">${t.fund ? '🏦 ' : ''}${esc(t.name)}<small>${t.fund ? 'việc chung → quỹ · ' : ''}${stars(t.value)}${maxOf(t) > 1 ? ` · tối đa ${maxOf(t)} lần/ngày` : ''} · ${forWho(t)}${done.includes(t.id) ? ` · ✅ ${maxOf(t) > 1 ? `${cnt[t.id]}/${maxOf(t)} lần` : 'xong'} hôm nay` : ''}</small></span>
           ${done.includes(t.id) ? `<button class="sbtn" data-act="undo" data-id="${t.id}">↩︎ Bỏ đánh dấu</button>` : ''}
           <button class="sbtn" data-act="up" data-id="${t.id}" ${i ? '' : 'disabled style="opacity:.3"'}>▲</button>
           <button class="sbtn" data-act="edit" data-id="${t.id}">✏️</button>
@@ -1375,7 +1399,7 @@ function tra_(o) {
           S[tab].push(it);
         }
         Object.assign(it, { name, icon: pick, kidIds });
-        if (tab === 'tasks') { it.value = Math.min(10, num); it.max = Math.min(10, Math.max(1, parseInt($('fmax').value, 10) || 1)); }
+        if (tab === 'tasks') { it.fund = $('ffund').checked; it.value = Math.min(10, num); it.max = Math.min(10, Math.max(1, parseInt($('fmax').value, 10) || 1)); }
         if (tab === 'rewards') it.cost = num;
         touch(it);
         editing = null; save(); renderParent(); render();
@@ -1392,6 +1416,21 @@ function tra_(o) {
     else if (act === 'voice') { S.voice.name = id; say(`Chào ${kid().name}, con làm tốt lắm.`, true); }
     else if (act === 'vtest') { say(`Giỏi quá con ơi! ${kid().name} được thêm một ngôi sao nhé.`, true); return; }
     else if (act === 'vreset') { S.voice = { name: '', rate: .85, pitch: 1.05 }; say('Giỏi quá con ơi!', true); }
+    else if (act === 'fundsuggest') {
+      // Gợi ý việc chung cho anh em; "không làm em khóc" dành cho các anh trừ bé út (bé có ngày sinh nhỏ nhất)
+      const ks = kids(), dated = ks.filter(k => k.dob).sort((a, b) => a.dob < b.dob ? -1 : 1);
+      const youngest = dated.length ? dated[dated.length - 1].id : null;
+      const notBaby = ks.filter(k => k.id !== youngest).map(k => k.id);
+      const middle = dated.length >= 3 ? [dated[dated.length - 2].id] : notBaby;
+      let o = tasks().reduce((m, t) => Math.max(m, t.o), -1), added = 0;
+      for (const [name, icon, value, who] of [['Chơi với nhau không tranh giành', '🤝', 2, notBaby], ['Cùng dọn đồ chơi', '🧸', 2, notBaby], ['Chơi không làm em bé khóc', '👶', 2, middle]]) {
+        if (tasks().some(t => t.name === name)) continue;
+        const t = { id: uid(), k: 'task', name, icon, value, kidIds: who.length ? who : ks.map(k => k.id), o: ++o, fund: true, max: 1 };
+        S.tasks.push(t); touch(t); added++;
+      }
+      pf = FUND;
+      alert(added ? `Đã thêm ${added} việc chung. Bố mẹ sửa lại số sao, bé làm tuỳ ý nhé.` : 'Các việc chung gợi ý đã có rồi.');
+    }
     else if (act === 'addrule' || act === 'rmrule') {
       const c = streakCfg();
       c.rules = act === 'addrule' ? [...c.rules, { days: 14, stars: 10 }] : c.rules.filter((_, i) => i !== +id);
@@ -1424,8 +1463,8 @@ function tra_(o) {
         touch(a); touch(c);
       }
     } else if (act === 'undo') {
-      const who = pfKid(); if (who === 'all') return;
-      const ev = todayDone(who).filter(x => x.task === id).pop(), t = tasks().find(x => x.id === id);
+      const t = tasks().find(x => x.id === id), who = t && t.fund ? FUND : pfKid(); if (who === 'all') return;
+      const ev = todayDone(who).filter(x => x.task === id).pop();
       if (!ev) return;
       addEvent(who, -ev.d, `↩︎ Bỏ đánh dấu: ${t ? `${t.icon} ${t.name}` : ev.text}`, { type: 'undo', ref: ev.id });
       if (!todayFull(who)) {
