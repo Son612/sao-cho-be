@@ -119,6 +119,10 @@
   .alldone { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center;
     background: #eafaf0; border-radius: 26px; padding: 26px 16px; box-shadow: 0 6px 0 rgba(59,178,115,.25); animation: pop .5s ease; }
   .alldone span { font-size: 64px; line-height: 1; }
+  /* Lời khen làm xong hết việc: một dòng gọn phía trên các thẻ việc */
+  #tasks .alldone { flex-direction: row; justify-content: center; padding: 10px 16px; gap: 10px; width: 100%; box-sizing: border-box; }
+  #tasks .alldone span { font-size: 32px; }
+  #tasks .alldone b { font-size: 18px; }
   .alldone b { font-size: 22px; }
   .alldone small { color: var(--muted); font-weight: 700; font-size: 15px; }
 
@@ -862,13 +866,12 @@ function tra_(o) {
     }
     const cnt = countToday(), mine = myTasks();
     $('today').textContent = `${mine.filter(t => cnt[t.id]).length}/${mine.length}`;
-    // Việc đã làm đủ số lần hôm nay ẩn khỏi màn hình, sang ngày mới tự hiện lại
+    // Việc đã làm đủ số lần vẫn ở trên màn hình, hiện dấu ✓ xanh; sang ngày mới tự bỏ dấu
     const todo = mine.filter(t => (cnt[t.id] || 0) < maxOf(t));
     $('tasks').innerHTML = !mine.length ? '<div class="empty">Chưa có việc nào. Bố mẹ vào "Bố mẹ" để thêm nhé.</div>'
-      : !todo.length ? `<div class="alldone"><span>🎉</span><b>${esc(k.name)} đã làm xong hết việc hôm nay!</b><small>Ngày mai các việc sẽ hiện lại nhé.</small></div>`
-      : todo.map(t => `
-      <button class="task" data-task="${t.id}">
-        ${maxOf(t) > 1 ? `<span class="times">${cnt[t.id] || 0}/${maxOf(t)}</span>` : ''}
+      : (!todo.length ? `<div class="alldone"><span>🎉</span><b>${esc(k.name)} đã làm xong hết việc hôm nay!</b></div>` : '') + mine.map(t => `
+      <button class="task ${(cnt[t.id] || 0) >= maxOf(t) ? 'done' : ''}" data-task="${t.id}">
+        ${maxOf(t) > 1 && (cnt[t.id] || 0) < maxOf(t) ? `<span class="times">${cnt[t.id] || 0}/${maxOf(t)}</span>` : ''}
         <span class="ic">${t.icon}</span><span class="tn">${esc(t.name)}</span><span class="ts">${stars(t.value)}</span>
       </button>`).join('');
     const cfg = streakCfg(), n = streakOf(k.id), lv = leaveLeft(k.id);
@@ -881,15 +884,15 @@ function tra_(o) {
         (r ? ` <small><i>· </i>thêm ${left} ngày nữa được +${r.stars} ⭐</small>` : '') +
         (lv > 0 ? ` <button class="leavebtn" data-act="leave">🏖️ ${lv} ngày phép</button>` : '');
     }
-    // Việc chung: sao vào quỹ, đủ số lần thì ẩn với mọi bé
-    const ft = myFundTasks(), ftodo = ft.filter(t => (cnt[t.id] || 0) < maxOf(t));
+    // Việc chung: sao vào quỹ, đủ số lần thì hiện ✓ với mọi bé
+    const ft = myFundTasks();
     $('fundWrap').hidden = !ft.length;
     $('fundPill').textContent = `🏦 ⭐ ${starsOf(FUND)}`;
-    $('fundTasks').innerHTML = ftodo.length ? ftodo.map(t => `
-      <button class="task" data-task="${t.id}">
-        ${maxOf(t) > 1 ? `<span class="times">${cnt[t.id] || 0}/${maxOf(t)}</span>` : ''}
+    $('fundTasks').innerHTML = ft.map(t => `
+      <button class="task ${(cnt[t.id] || 0) >= maxOf(t) ? 'done' : ''}" data-task="${t.id}">
+        ${maxOf(t) > 1 && (cnt[t.id] || 0) < maxOf(t) ? `<span class="times">${cnt[t.id] || 0}/${maxOf(t)}</span>` : ''}
         <span class="ic">${t.icon}</span><span class="tn">${esc(t.name)}</span><span class="ts">${stars(t.value)}</span>
-      </button>`).join('') : '<div class="alldone"><span>🤝</span><b>Các anh em đã làm xong việc chung hôm nay!</b></div>';
+      </button>`).join('');
     $('bday').hidden = !isBirthday(k);
     if (isBirthday(k)) $('bday').textContent = `🎂 Chúc mừng sinh nhật ${k.name} ${ageOf(k)} tuổi!`;
     $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
@@ -920,7 +923,7 @@ function tra_(o) {
       save();
       const now = starsOf(FUND);
       flyStar(b, Math.min(t.value, 5), $('fundPill')); chime();
-      if (times + 1 >= maxOf(t)) { b.classList.add('done'); setTimeout(() => b.classList.add('gone'), 650); }
+      if (times + 1 >= maxOf(t)) b.classList.add('done');
       setTimeout(render, 1000);
       const ready = fundRewards().find(r => before < r.cost && now >= r.cost);
       if (ready) setTimeout(() => cheer(ready.icon, 'Quỹ chung đủ sao đổi quà rồi!', ready.name), 1100);
@@ -935,8 +938,7 @@ function tra_(o) {
     flyStar(b, Math.min(t.value, 5));
     chime();
     if (times + 1 >= maxOf(t)) {
-      b.classList.add('done');
-      setTimeout(() => b.classList.add('gone'), 650);   // đủ số lần: thu nhỏ rồi biến mất
+      b.classList.add('done');   // đủ số lần: hiện ✓ xanh, vẫn ở trên màn hình
     }
     setTimeout(render, 1000);
 
