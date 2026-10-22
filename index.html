@@ -254,6 +254,14 @@
   @media (max-width: 480px) {
     .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
     .task { min-height: 150px; } .task .ic { font-size: 54px; } .task .tn { font-size: 16px; }
+    /* Việc của bé trên điện thoại: 3 cột, thẻ gọn hơn để thấy được nhiều việc */
+    #tasks, #fundTasks { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    #tasks .task, #fundTasks .task { min-height: 112px; padding: 10px 4px 8px; gap: 3px; border-radius: 20px; }
+    #tasks .task .ic, #fundTasks .task .ic { font-size: 40px; }
+    #tasks .task .tn, #fundTasks .task .tn { font-size: 13px; }
+    #tasks .task .ts, #fundTasks .task .ts { font-size: 12px; letter-spacing: 0; }
+    #tasks .task.done::after, #fundTasks .task.done::after { top: 5px; right: 5px; width: 24px; height: 24px; font-size: 15px; }
+    #tasks .task .times, #fundTasks .task .times { top: 5px; right: 5px; font-size: 11px; padding: 2px 6px; }
     .count { font-size: 46px; } .bigstar { font-size: 52px; }
     .bigbtn { padding: 14px 18px; font-size: 18px; }
   }
