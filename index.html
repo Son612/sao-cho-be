@@ -224,7 +224,13 @@
   .install { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 18px; padding: 10px 12px; margin-bottom: 10px; box-shadow: var(--shadow); font-size: 15px; font-weight: 600; }
   .install[hidden] { display: none; }
   .install .shr { display: inline-block; padding: 0 6px; border-radius: 6px; background: #e8f0ff; color: #2f6bff; font-weight: 900; }
-  .wrap { padding-top: max(12px, env(safe-area-inset-top)); }
+  /* Vừa viền iPhone (như Món Ngon): thanh trên cùng dính ở mép trên, nền kín tới tận vùng giờ/pin
+     → Safari không làm mờ nội dung, nội dung cuộn lên không lẫn vào giờ, pin */
+  .wrap { padding-top: 0; }
+  header { position: sticky; top: 0; z-index: 6; background: var(--bg); margin: 0 -16px 4px; padding: calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px; }
+  body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 30; pointer-events: none; }
+  .panel { max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 12px); }
+  .cheer { padding: calc(20px + env(safe-area-inset-top, 0px)) 20px calc(20px + env(safe-area-inset-bottom, 0px)); }
   .hist .row { padding: 8px 12px; }
   .plus { color: var(--ok); font-weight: 900; }
   .minus { color: var(--danger); font-weight: 900; }
